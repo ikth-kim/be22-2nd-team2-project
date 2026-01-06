@@ -160,7 +160,7 @@ graph LR
     style UC_Check stroke-dasharray: 5 5,fill:#eee
     
     %% Inheritance: Member is a Guest (can View/List)
-    M --|> G
+    M -.-> G
 ```
 
 <br>
