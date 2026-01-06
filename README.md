@@ -111,43 +111,52 @@ graph LR
         direction TB
         
         %% Auth
-        UC1["회원가입/로그인"]
+        UC_Join["회원가입"]
+        UC_Login["로그인"]
+        UC_My["마이페이지"]
+        UC_Out["회원 탈퇴"]
         
         %% Read
-        UC2["소설 목록 조회<br>(필터링/검색)"]
-        UC3["소설 상세/책 뷰"]
+        UC_List["소설 목록 조회"]
+        UC_Search["검색"]
+        UC_Filter["필터링"]
+        UC_View["소설 상세 조회"]
+        UC_BookView["책 뷰 모드"]
         
         %% Write
-        UC4["소설 방 만들기"]
-        UC5["문장 이어 쓰기<br>(Relay)"]
+        UC_Create["소설 생성"]
+        UC_Relay["문장 이어 쓰기"]
+        UC_Check["순서/중복 확인"]
         
         %% Interact
-        UC6["투표<br>(Book/Sentence)"]
-        UC7["댓글 작성<br>(Book Only)"]
-        
-        %% My
-        UC8["마이페이지<br>(내 서재)"]
-        UC9["회원 탈퇴<br>(Soft Delete)"]
+        UC_VoteBook["소설 투표"]
+        UC_VoteSent["문장 투표"]
+        UC_Comment["댓글 작성"]
     end
 
     %% Relations - Guest
-    G --> UC1
-    G --> UC2
-    G --> UC3
-
-    %% Relations - Member
-    M --> UC2
-    M --> UC3
-    M --> UC4
-    M --> UC5
-    M --> UC6
-    M --> UC7
-    M --> UC8
-    M --> UC9
+    G --> UC_Join
+    G --> UC_Login
+    G --> UC_List
+    G --> UC_View
     
-    style UC4 fill:#f9f,stroke:#333
-    style UC5 fill:#f9f,stroke:#333
-    style UC9 fill:#ccc,stroke:#333,stroke-dasharray: 5 5
+    %% Relations - Member
+    M --> UC_My
+    M --> UC_Out
+    M --> UC_Create
+    M --> UC_Relay
+    M --> UC_VoteBook
+    M --> UC_VoteSent
+    M --> UC_Comment
+    
+    %% Relationships (Include/Extend)
+    UC_Search -.->|&lt;&lt;extend&gt;&gt;| UC_List
+    UC_Filter -.->|&lt;&lt;extend&gt;&gt;| UC_List
+    UC_BookView -.->|&lt;&lt;extend&gt;&gt;| UC_View
+    
+    UC_Relay -.->|&lt;&lt;include&gt;&gt;| UC_Check
+    
+    style UC_Check stroke-dasharray: 5 5,fill:#eee
     
     %% Member includes Guest capabilities
     M -.-> G
