@@ -42,6 +42,10 @@
 *   **BaseEntity:** `created_at`, `updated_at` 등 공통 감사(Audit) 필드는 `@MappedSuperclass`로 관리.
 *   **API Response:** 성공/실패 여부를 포함한 공통 래퍼(Wrapper) 클래스 사용 (프로젝트 내 정의된 포맷 준수).
 
+### 2.5 Security & JWT
+*   **Dependency:** `jjwt-api`, `jjwt-impl`, `jjwt-jackson` (0.11.5 버전 권장).
+*   **Authentication:** `Bearer` Token 방식 사용. Header의 `Authorization` 필드 파싱.
+
 ## 3. 🛠️ 라이브러리 및 도구 활용
 *   **Lombok:** `@Getter`, `@RequiredArgsConstructor`, `@Slf4j` 적극 활용. `@ToString`은 순환 참조 주의(exclude 설정).
 *   **Validation:** `jakarta.validation` 어노테이션(`@NotNull`, `@Size`, `@Email`)으로 입력값 검증 수행.
