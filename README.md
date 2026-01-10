@@ -4,6 +4,24 @@
 
 <br>
 
+## 📑 목차
+1. [Part 1. 프로젝트 소개](#part-1-프로젝트-소개)
+   - [1. 프로젝트 소개](#1-프로젝트-소개)
+   - [2. 팀원 및 역할 분담](#2-팀원-및-역할-분담-team-next-page)
+   - [3. 기술 스택](#3-기술-스택-tech-stack)
+   - [4. 주요 기능](#4-주요-기능-key-features)
+   - [5. 요구사항 및 유스케이스](#5-요구사항-및-유스케이스-requirements--use-case)
+   - [6. ERD 설계](#6-erd-설계-entity-relationship)
+   - [7. Database Schema](#7-database-schema-ddl)
+   - [8. API 명세](#8-api-명세-endpoint-example)
+   - [9. 패키지 구조](#9-패키지-구조-package-structure)
+2. [Part 2. 개발자 가이드](#part-2-개발자-가이드-developer-guidelines)
+   - [1. 코딩 컨벤션 및 패턴](#1-코딩-컨벤션-및-패턴)
+   - [2. 협업 컨벤션](#2-협업-컨벤션-collaboration)
+   - [3. 라이브러리 및 도구 활용](#3-라이브러리-및-도구-활용)
+
+<br>
+
 # 🚀 Part 1. 프로젝트 소개
 
 ## 1. 📝 프로젝트 소개
@@ -399,6 +417,49 @@ CREATE TABLE `sentence_votes` (
 
 <br>
 
+## 9. 📦 패키지 구조 (Package Structure)
+`com.team2.nextpage` 패키지 하위에 **Command(JPA)** 와 **Query(MyBatis)**, 그리고 **Common** 영역으로 나누어 설계했습니다.
+
+```text
+src/main/java/com/team2/nextpage
+├── 📂 common                  // 공통 모듈 (정진호)
+│   ├── 📂 entity              // BaseEntity 등
+│   ├── 📂 error               // ErrorCode, Exception 클래스
+│   ├── 📂 exception           // GlobalExceptionHandler
+│   └── 📂 response            // ApiResponse
+├── 📂 command                 // [CUD] JPA 영역
+│   ├── 📂 member              // 회원 (김태형)
+│   │   ├── 📂 controller
+│   │   ├── 📂 service
+│   │   ├── 📂 repository
+│   │   ├── 📂 entity          // DB Tables (Domain)
+│   │   └── 📂 dto             // Request DTO
+│   ├── 📂 book                // 소설 (최현지)
+│   │   ├── 📂 controller
+│   │   ├── 📂 service
+│   │   ├── 📂 repository
+│   │   ├── 📂 entity
+│   │   └── 📂 dto
+│   └── 📂 reaction            // 반응 (정병진)
+│       ├── 📂 controller
+│       ├── 📂 service
+│       ├── 📂 repository
+│       ├── 📂 entity
+│       └── 📂 dto
+└── 📂 query                   // [R] MyBatis 영역
+    ├── 📂 member              // 회원 조회 (김태형)
+    │   ├── 📂 controller
+    │   ├── 📂 service
+    │   ├── 📂 mapper          // MyBatis Interface
+    │   └── 📂 dto             // Response DTO
+    ├── 📂 book                // 소설 조회 (최현지)
+    └── 📂 reaction            // 반응 조회 (정병진)
+```
+
+<br>
+
+<br>
+
 # 🛠️ Part 2. 개발자 가이드 (Developer Guidelines)
 > **"우리는 하나의 원칙 아래 코드를 작성합니다."**
 이 섹션은 Next Page 프로젝트에 참여하는 모든 개발자(및 AI 어시스턴트)가 준수해야 할 핵심 컨벤션과 가이드라인입니다.
@@ -440,48 +501,8 @@ CREATE TABLE `sentence_votes` (
 
 <br>
 
-## 2. 📦 패키지 구조 (Package Structure)
-`com.team2.nextpage` 패키지 하위에 **Command(JPA)** 와 **Query(MyBatis)**, 그리고 **Common** 영역으로 나누어 설계했습니다.
 
-```text
-src/main/java/com/team2/nextpage
-├── 📂 common                  // 공통 모듈 (정진호)
-│   ├── 📂 entity              // BaseEntity 등
-│   ├── 📂 error               // ErrorCode, Exception 클래스
-│   ├── 📂 exception           // GlobalExceptionHandler
-│   └── 📂 response            // ApiResponse
-├── 📂 command                 // [CUD] JPA 영역
-│   ├── 📂 member              // 회원 (김태형)
-│   │   ├── 📂 controller
-│   │   ├── 📂 service
-│   │   ├── 📂 repository
-│   │   ├── 📂 entity          // DB Tables (Domain)
-│   │   └── 📂 dto             // Request DTO
-│   ├── 📂 book                // 소설 (최현지)
-│   │   ├── 📂 controller
-│   │   ├── 📂 service
-│   │   ├── 📂 repository
-│   │   ├── 📂 entity
-│   │   └── 📂 dto
-│   └── 📂 reaction            // 반응 (정병진)
-│       ├── 📂 controller
-│       ├── 📂 service
-│       ├── 📂 repository
-│       ├── 📂 entity
-│       └── 📂 dto
-└── 📂 query                   // [R] MyBatis 영역
-    ├── 📂 member              // 회원 조회 (김태형)
-    │   ├── 📂 controller
-    │   ├── 📂 service
-    │   ├── 📂 mapper          // MyBatis Interface
-    │   └── 📂 dto             // Response DTO
-    ├── 📂 book                // 소설 조회 (최현지)
-    └── 📂 reaction            // 반응 조회 (정병진)
-```
-
-<br>
-
-## 3. 🤝 협업 컨벤션 (Collaboration)
+## 2. 🤝 협업 컨벤션 (Collaboration)
 
 ### 🌳 Branch Strategy
 *   `main`: 배포 가능한 안정 버전
@@ -530,7 +551,7 @@ src/main/java/com/team2/nextpage
 
 <br>
 
-## 4. 🛠️ 라이브러리 및 도구 활용
+## 3. 🛠️ 라이브러리 및 도구 활용
 *   **Lombok:** `@Getter`, `@RequiredArgsConstructor`, `@Slf4j` 적극 활용. `@ToString`은 순환 참조 주의(exclude 설정).
 *   **Validation:** `jakarta.validation` 어노테이션(`@NotNull`, `@Size`, `@Email`)으로 입력값 검증 수행.
 *   **Data Type:** 상태값 등은 String 대신 **Enum 사용 권장** (`@Enumerated(EnumType.STRING)`).
