@@ -51,11 +51,11 @@ public class AuthService {
    */
   public TokenResponse login(LoginRequest loginRequest) {
     // 1. 사용자 조회
-    Member member = memberRepository.findByUserEmail(loginRequest.userEmail())
+    Member member = memberRepository.findByUserEmail(loginRequest.getUserEmail())
         .orElseThrow(() -> new BadCredentialsException("아이디 또는 비밀번호가 일치하지 않습니다."));
 
     // 2. 비밀번호 검증
-    if (!passwordEncoder.matches(loginRequest.userPw(), member.getUserPw())) {
+    if (!passwordEncoder.matches(loginRequest.getUserPw(), member.getUserPw())) {
       throw new BadCredentialsException("아이디 또는 비밀번호가 일치하지 않습니다.");
     }
 
