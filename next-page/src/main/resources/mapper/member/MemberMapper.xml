@@ -4,6 +4,7 @@
 <mapper namespace="com.team2.nextpage.query.member.mapper.MemberMapper">
   <select id="findByUserEmail" resultType="MemberDto">
     SELECT
+        user_id as userId,
         user_email as userEmail,
         user_nicknm as userNicknm,
         user_role as userRole

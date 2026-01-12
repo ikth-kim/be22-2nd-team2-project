@@ -23,7 +23,9 @@ public class MemberQueryService {
     /**
      * 마이페이지 정보 조회
      */
-    public MemberDto getMyPage(Long userId) {
-        return null; // impl
+    public MemberDto getMyPage(String userEmail) {
+        return memberMapper
+                .findByUserEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("회원 정보를 찾을 수 없습니다."));
     }
 }

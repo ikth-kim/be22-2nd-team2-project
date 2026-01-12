@@ -13,7 +13,7 @@ import java.util.Optional;
 public interface MemberMapper {
 
     /**
-     * 내 정보 조회
+     * 이메일로 회원 조회
      */
-    Optional<MemberDto> findById(Long userId);
+    Optional<MemberDto> findByUserEmail(String userEmail);
 }
