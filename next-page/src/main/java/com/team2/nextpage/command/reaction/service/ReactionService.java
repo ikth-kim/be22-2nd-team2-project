@@ -4,6 +4,7 @@ import com.team2.nextpage.command.reaction.dto.request.CreateCommentRequest;
 import com.team2.nextpage.command.reaction.dto.request.UpdateCommentRequest;
 import com.team2.nextpage.command.reaction.entity.Comment;
 import com.team2.nextpage.command.reaction.repository.CommentRepository;
+import com.team2.nextpage.common.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,11 +25,11 @@ public class ReactionService {
    * 댓글 작성
    *
    * @param request 댓글 작성 요청 정보(bookId, content)
-   * @return        생성된 댓글의 ID
+   * @return 생성된 댓글의 ID
    */
   public Long addComment(CreateCommentRequest request) {
 
-    long writerId = 1L; // 추후 회원 및 인증 기능 완성 시 'userId'로 값 변경
+    Long writerId = SecurityUtil.getCurrentUserId();
 
     Comment newComment = Comment.builder()
         .bookId(request.getBookId())
@@ -53,7 +54,7 @@ public class ReactionService {
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 댓글입니다."));
 
     // 권한 체크 (타인 댓글 수정/삭제 불가 예외 처리)
-    validateWriter(comment, 1L); // 추후 회원 및 인증 기능 완성 시 'userId'로 값 변경
+    validateWriter(comment, SecurityUtil.getCurrentUserId());
 
     comment.updateContent(request.getContent());
   }
@@ -63,15 +64,14 @@ public class ReactionService {
    *
    * @param commentId 삭제할 댓글 ID
    */
-  public void removeComment(Long commentId){
+  public void removeComment(Long commentId) {
     Comment comment = commentRepository.findById(commentId)
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 댓글입니다."));
 
     // 권한 체크 (타인 댓글 수장/삭제 불가 예외 처리)
-    validateWriter(comment, 1L); // 추후 회원 및 인증 기능 완성 시 'userId'로 값 변경
+    validateWriter(comment, SecurityUtil.getCurrentUserId());
 
     commentRepository.delete(comment);
-
 
   }
 
@@ -99,7 +99,7 @@ public class ReactionService {
    * @throws IllegalArgumentException 작성자가 아닐 경우 예외 발생
    */
   private void validateWriter(Comment comment, Long userId) {
-    if (!comment.getWriterId().equals(userId)){
+    if (!comment.getWriterId().equals(userId)) {
       throw new IllegalArgumentException("작성자만 수정/삭제할 수 있습니다.");
     }
   }

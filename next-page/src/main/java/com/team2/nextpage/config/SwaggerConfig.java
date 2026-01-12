@@ -28,6 +28,9 @@ public class SwaggerConfig {
         @Value("${spring.application.name:Next Page}")
         private String applicationName;
 
+        @Value("${app.server-url:http://localhost:8080}")
+        private String serverUrl;
+
         private static final String SECURITY_SCHEME_NAME = "bearerAuth";
 
         @Bean
@@ -81,7 +84,7 @@ public class SwaggerConfig {
          */
         private List<Server> serverList() {
                 Server localServer = new Server()
-                                .url("http://localhost:8080")
+                                .url(serverUrl)
                                 .description("로컬 개발 서버");
 
                 Server productionServer = new Server()

@@ -1,5 +1,6 @@
 package com.team2.nextpage.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -14,18 +15,19 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
+        @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://localhost:8080}")
+        private String corsAllowedOrigins;
+
         /**
          * CORS (Cross-Origin Resource Sharing) 설정
          * 프론트엔드 개발 시 다른 도메인에서의 API 호출을 허용
          */
         @Override
         public void addCorsMappings(CorsRegistry registry) {
+                String[] origins = corsAllowedOrigins.split(",");
+
                 registry.addMapping("/api/**")
-                                .allowedOrigins(
-                                                "http://localhost:3000", // React 개발 서버
-                                                "http://localhost:5173", // Vite 개발 서버
-                                                "http://localhost:8080" // 로컬 테스트
-                                )
+                                .allowedOrigins(origins)
                                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                                 .allowedHeaders("*")
                                 .allowCredentials(true)

@@ -4,6 +4,7 @@ import com.team2.nextpage.command.book.dto.request.CreateBookRequest;
 import com.team2.nextpage.command.book.dto.request.SentenceAppendRequest;
 import com.team2.nextpage.command.book.service.BookService;
 import com.team2.nextpage.common.response.ApiResponse;
+import com.team2.nextpage.common.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,7 +33,7 @@ public class BookController {
      */
     @PostMapping
     public ResponseEntity<ApiResponse<Long>> create(@RequestBody @Valid CreateBookRequest request) {
-        Long writerId = 1L; // TODO: 추후 SecurityContext에서 추출
+        Long writerId = SecurityUtil.getCurrentUserId();
         Long bookId = bookService.createBook(writerId, request);
         return ResponseEntity.ok(ApiResponse.success(bookId));
     }
@@ -44,7 +45,7 @@ public class BookController {
     @PostMapping("/{bookId}/sentences")
     public ResponseEntity<ApiResponse<Long>> append(@PathVariable Long bookId,
             @RequestBody @Valid SentenceAppendRequest request) {
-        Long writerId = 1L; // TODO: 추후 SecurityContext에서 추출
+        Long writerId = SecurityUtil.getCurrentUserId();
         // 만약 request body에 writerId가 있다면 그것을 우선할 수도 있지만, 보안상 토큰에서 가져오는 게 맞음.
         // 현재는 DTO에 writerId 필드가 있는데, 이는 서비스 계층 전달용으로 쓰이거나 클라가 보낼 수도 있음.
         // 여기서는 서비스 메서드가 writerId를 인자로 받으므로, 컨트롤러에서 추출해 넘김.
