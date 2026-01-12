@@ -34,6 +34,18 @@
 ### 📅 개발 기간
 * **2025.12.23 ~ 2026.01.16**
 
+### 📊 프로젝트 진행 현황 (2026.01.12 기준)
+
+| 기능 영역 | 상태 | 완료 항목 |
+|:---:|:---:|:---|
+| **🔐 인증/인가** | ✅ 완료 | JWT 기반 로그인/로그아웃, 토큰 갱신, Spring Security 설정 |
+| **👤 회원 관리** | ✅ 완료 | 회원가입, 관리자 가입, SecurityUtil 통한 사용자 정보 조회 |
+| **📖 소설 생성/집필** | ✅ 완료 | 소설 생성 API, 문장 이어쓰기 API, SecurityUtil 연동 |
+| **📚 소설 조회** | ✅ 완료 | 목록 조회, 상세 조회, 뷰어 모드 조회 |
+| **💬 댓글** | ✅ 완료 | 댓글 CRUD (생성/수정/삭제), SecurityUtil 연동 |
+| **❤️ 투표** | 🚧 진행중 | 투표 API 엔드포인트 구현 (로직 구현 필요) |
+| **🧑‍💼 마이페이지** | 🚧 진행중 | 조회 API 구현 (서비스 로직 구현 필요) |
+
 <br>
 
 ## 2. 👥 팀원 및 역할 분담 (Team Next Page)
@@ -574,6 +586,21 @@ src/main/java/com/team2/nextpage
 
 ### 1.5 Security & JWT
 *   **Authentication:** `Bearer` Token 방식 사용. Header의 `Authorization` 필드 파싱.
+*   **SecurityUtil 사용:** 현재 인증된 사용자 정보를 가져올 때는 `SecurityUtil` 유틸리티 클래스를 사용한다.
+    ```java
+    // 현재 로그인한 사용자 ID 조회
+    Long userId = SecurityUtil.getCurrentUserId();
+    
+    // 현재 로그인한 사용자 이메일 조회
+    String email = SecurityUtil.getCurrentUserEmail();
+    
+    // 현재 로그인한 사용자 닉네임 조회
+    String nickname = SecurityUtil.getCurrentUserNickname();
+    
+    // 인증 여부 확인
+    boolean isLoggedIn = SecurityUtil.isAuthenticated();
+    ```
+*   **주의사항:** 하드코딩된 사용자 ID(`1L` 등)를 절대 사용하지 않는다. 반드시 `SecurityUtil`을 통해 동적으로 조회.
 
 <br>
 
