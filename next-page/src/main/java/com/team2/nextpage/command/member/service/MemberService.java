@@ -1,9 +1,18 @@
 package com.team2.nextpage.command.member.service;
 
+import com.team2.nextpage.command.member.dto.request.SignUpRequest;
+import com.team2.nextpage.command.member.entity.Member;
+import com.team2.nextpage.command.member.entity.UserRole;
+import com.team2.nextpage.command.member.entity.UserStatus;
 import com.team2.nextpage.command.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 /**
  * 회원 Command 서비스 (회원가입, 탈퇴 등)
@@ -11,36 +20,57 @@ import org.springframework.transaction.annotation.Transactional;
  * @author 김태형
  */
 @Service
-@Transactional
 @RequiredArgsConstructor
+@Transactional
 public class MemberService {
 
-    private final MemberRepository memberRepository;
+  private final MemberRepository memberRepository;
+  private final ModelMapper modelMapper;
+  private final PasswordEncoder passwordEncoder;
 
-    /**
-     * 신규 회원 가입
-     * 
-     * [Hint]
-     * 1. 요청 DTO(SignUpRequest)를 인자로 받습니다.
-     * 2. 이메일 중복 체크를 수행합니다 (Repository).
-     * 3. 비밀번호는 반드시 BCrypt 등으로 암호화해야 합니다.
-     * 4. Member Entity를 생성하여 저장합니다 (ModelMapper.map() 또는 Member.builder() 활용).
-     * 5. 가입된 회원의 ID(PK)를 반환합니다.
-     */
-    public Long signUp(/* SignUpRequest request */) {
-        // TODO: 김태형 구현 필요
-        return null;
+  /* USER 등록 */
+  public void registUser(SignUpRequest memberCreateRequest) {
+    if (memberRepository.findByUserEmail(memberCreateRequest.userEmail()).isPresent()) {
+      throw new RuntimeException("이미 존재하는 아이디(이메일)입니다.");
     }
 
-    /**
-     * 회원 탈퇴 (Soft Delete)
-     *
-     * [Hint]
-     * 1. SecurityContext에서 현재 로그인한 사용자 ID를 가져오거나 인자로 받습니다.
-     * 2. repository.deleteById(userId)를 호출합니다.
-     * 3. Entity에 정의된 @SQLDelete에 의해 자동으로 'DELETED' 상태로 업데이트됩니다.
-     */
-    public void withdraw(Long userId) {
-        // TODO: 김태형 구현 필요
+    Member member = Member.builder()
+        .userEmail(memberCreateRequest.userEmail())
+        .userPw(passwordEncoder.encode(memberCreateRequest.userPw()))
+        .userNicknm(memberCreateRequest.userNicknm())
+        .userRole(UserRole.USER)
+        .userStatus(UserStatus.ACTIVE)
+        .build();
+
+    memberRepository.save(member);
+  }
+
+  /* ADMIN 등록 */
+  public void registAdmin(SignUpRequest memberCreateRequest) {
+    if (memberRepository.findByUserEmail(memberCreateRequest.userEmail()).isPresent()) {
+      throw new RuntimeException("이미 존재하는 아이디(이메일)입니다.");
     }
+
+    Member member = Member.builder()
+        .userEmail(memberCreateRequest.userEmail())
+        .userPw(passwordEncoder.encode(memberCreateRequest.userPw()))
+        .userNicknm(memberCreateRequest.userNicknm())
+        .userRole(UserRole.ADMIN)
+        .userStatus(UserStatus.ACTIVE)
+        .build();
+
+    memberRepository.save(member);
+  }
+
+  // 회원 탈퇴
+  public void withdraw() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    String userEmail = authentication.getName(); // 인증 시 userEmail을 사용
+
+    Member member = memberRepository.findByUserEmail(userEmail)
+        .orElseThrow(() -> new RuntimeException("로그인 유저 정보가 없습니다."));
+
+    // Soft Delete 수행
+    memberRepository.delete(member);
+  }
 }
