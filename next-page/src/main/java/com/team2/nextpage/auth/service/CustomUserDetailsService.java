@@ -2,55 +2,67 @@ package com.team2.nextpage.auth.service;
 
 import com.team2.nextpage.command.member.entity.Member;
 import com.team2.nextpage.command.member.repository.MemberRepository;
+import com.team2.nextpage.config.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
-
 /**
- * Spring Security UserDetailsService 구현체
- * 사용자 이메일로 회원 정보를 조회하여 인증에 사용합니다.
+ * Spring Security 사용자 인증을 위한 UserDetailsService 구현
+ * 이메일을 통해 데이터베이스에서 사용자 정보를 조회합니다.
  *
- * @author 김태형
+ * @author 정진호
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class CustomUserDetailsService implements UserDetailsService {
 
   private final MemberRepository memberRepository;
 
   /**
-   * 사용자 이메일로 UserDetails 조회
-   * Spring Security 인증 과정에서 호출됩니다.
-   *
-   * @param userEmail 사용자 이메일 (username으로 사용)
-   * @return UserDetails 객체
-   * @throws UsernameNotFoundException 사용자를 찾을 수 없는 경우
+   * 이메일(username)을 통해 사용자 정보 조회
+   * 
+   * @param email 사용자 이메일
+   * @return UserDetails 구현체 (CustomUserDetails)
+   * @throws UsernameNotFoundException 사용자를 찾을 수 없을 때
    */
   @Override
-  public UserDetails loadUserByUsername(String userEmail) throws UsernameNotFoundException {
-    log.debug("사용자 조회 시도: {}", userEmail);
+  @Transactional(readOnly = true)
+  public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+    log.debug("사용자 인증 시도: {}", email);
 
-    Member member = memberRepository.findByUserEmail(userEmail)
+    Member member = memberRepository.findByUserEmail(email)
         .orElseThrow(() -> {
-          log.warn("사용자를 찾을 수 없습니다: {}", userEmail);
-          return new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + userEmail);
+          log.warn("사용자를 찾을 수 없습니다: {}", email);
+          return new UsernameNotFoundException("이메일 또는 비밀번호가 올바르지 않습니다.");
         });
 
-    log.debug("사용자 조회 성공: {}, Role: {}", member.getUserEmail(), member.getUserRole());
+    log.debug("사용자 인증 성공: {} (역할: {})", email, member.getUserRole());
+    return new CustomUserDetails(member);
+  }
 
-    return new User(
-        member.getUserEmail(),
-        member.getUserPw(),
-        Collections.singleton(new SimpleGrantedAuthority("ROLE_" + member.getUserRole().name())));
+  /**
+   * 사용자 ID로 UserDetails 조회 (JWT 토큰 갱신 등에 사용)
+   * 
+   * @param userId 사용자 ID
+   * @return UserDetails 구현체
+   * @throws UsernameNotFoundException 사용자를 찾을 수 없을 때
+   */
+  @Transactional(readOnly = true)
+  public UserDetails loadUserById(Long userId) throws UsernameNotFoundException {
+    log.debug("사용자 ID로 조회: {}", userId);
+
+    Member member = memberRepository.findById(userId)
+        .orElseThrow(() -> {
+          log.warn("사용자를 찾을 수 없습니다. ID: {}", userId);
+          return new UsernameNotFoundException("사용자를 찾을 수 없습니다.");
+        });
+
+    return new CustomUserDetails(member);
   }
 }
