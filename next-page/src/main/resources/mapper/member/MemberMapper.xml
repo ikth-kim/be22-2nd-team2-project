@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.team2.nextpage.query.member.mapper.MemberMapper">
+  <select id="findByUserEmail" resultType="MemberDto">
+    SELECT
+        user_email as userEmail,
+        user_nicknm as userNicknm,
+        user_role as userRole
+    FROM users
+    WHERE user_email = #{userEmail}
+      AND user_status = 'ACTIVE'
+  </select>
+</mapper>
