@@ -114,8 +114,8 @@
 ### Backend & Real-time
 
 ![Java](https://img.shields.io/badge/Java-17-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-6DB33F?style=flat-square&logo=springboot&logoColor=white)
-![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2023.0.3-6DB33F?style=flat-square&logo=spring&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.9-6DB33F?style=flat-square&logo=springboot&logoColor=white)
+![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2025.0.1-6DB33F?style=flat-square&logo=spring&logoColor=white)
 ![Eureka](https://img.shields.io/badge/Eureka-Service%20Discovery-6DB33F?style=flat-square)
 ![Gateway](https://img.shields.io/badge/Gateway-Spring%20Cloud-6DB33F?style=flat-square)
 ![Feign](https://img.shields.io/badge/Feign-OpenFeign-6DB33F?style=flat-square)
@@ -203,8 +203,6 @@
 
 ## PART 1-5. 요구사항 정의서
 
-구글 시트 등에서 활용할 수 있도록, 구현된 모든 기능을 상세하게 나열했습니다.
-
 ### 📋 기능 요구사항 (Functional Requirements)
 
 | 클래스 | ID | 대분류 | 요구사항 명 | 상세 내용 | 비고 |
@@ -282,7 +280,7 @@ erDiagram
     comments |o--o{ comments : "parent_id (대댓글)"
 
     users {
-        int user_id PK "AUTO_INCREMENT"
+        bigint user_id PK "AUTO_INCREMENT"
         varchar(100) user_email UK
         varchar(255) user_pw
         varchar(50) user_nicknm UK
@@ -299,41 +297,48 @@ erDiagram
     }
 
     books {
-        int book_id PK
-        int writer_id FK
+        bigint book_id PK
+        bigint writer_id FK
         varchar(20) category_id FK
         varchar(200) title
         varchar(20) status "WRITING/COMPLETED"
         int current_sequence
         int max_sequence
-        int last_writer_user_id
+        bigint last_writer_user_id
         datetime created_at
         datetime updated_at
     }
 
     sentences {
-        int sentence_id PK
-        int book_id FK
+        bigint sentence_id PK
+        bigint book_id FK
+        bigint writer_id FK
         text content
         int sequence_no
         datetime created_at
     }
 
     comments {
-        int comment_id PK
-        int parent_id FK
+        bigint comment_id PK
+        bigint parent_id FK
+        bigint book_id FK
+        bigint writer_id FK
         text content
         datetime deleted_at "Soft Delete"
         datetime created_at
     }
 
     book_votes {
-        int vote_id PK
+        bigint vote_id PK
+        bigint book_id FK
+        bigint voter_id FK
         varchar(10) vote_type "LIKE/DISLIKE"
     }
 
     sentence_votes {
-        int vote_id PK
+        bigint vote_id PK
+        bigint sentence_id FK
+        bigint voter_id FK
         varchar(10) vote_type "LIKE/DISLIKE"
     }
 ```
@@ -343,6 +348,39 @@ erDiagram
 ---
 
 ## PART 1-7. Database Schema
+
+### 🔄 AS-IS vs TO-BE: 데이터 타입 변경
+
+> **확장성을 고려한 설계 개선** — MSA 전환 시 모든 ID 컬럼을 `INT` → `BIGINT`로 변경
+
+| 컬럼명 | AS-IS (Monolithic) | TO-BE (MSA) | 변경 사유 |
+|:---|:---:|:---:|:---|
+| `user_id` | `INT` | `BIGINT` | 대규모 사용자 수용 (최대 2^63) |
+| `book_id` | `INT` | `BIGINT` | 장기 운영 시 소설 수 증가 대비 |
+| `sentence_id` | `INT` | `BIGINT` | 문장 누적 수 고려 |
+| `comment_id` | `INT` | `BIGINT` | 댓글 폭발적 증가 대응 |
+| `vote_id` | `INT` | `BIGINT` | 투표 데이터 확장성 |
+| `writer_id` (FK) | `INT` | `BIGINT` | PK 타입과 일치 |
+| `voter_id` (FK) | `INT` | `BIGINT` | PK 타입과 일치 |
+
+> [!TIP]
+> **INT vs BIGINT 비교**
+>
+> - `INT`: 약 21억 (2,147,483,647) 레코드 지원
+> - `BIGINT`: 약 922경 (9,223,372,036,854,775,807) 레코드 지원
+> - 저장 공간: INT(4바이트) → BIGINT(8바이트)로 2배 증가하나, 현대 시스템에서는 무시할 수준
+
+```diff
+-- AS-IS (Monolithic)
+- `user_id` INT NOT NULL AUTO_INCREMENT,
+- `book_id` INT NOT NULL AUTO_INCREMENT,
+
+-- TO-BE (MSA)
++ `user_id` BIGINT NOT NULL AUTO_INCREMENT,
++ `book_id` BIGINT NOT NULL AUTO_INCREMENT,
+```
+
+---
 
 <details>
 <summary>👉 <b>Click to view SQL Script (공통 스키마)</b></summary>

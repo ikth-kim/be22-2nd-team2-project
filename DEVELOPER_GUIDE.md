@@ -672,9 +672,65 @@ FOREIGN KEY (writer_id) REFERENCES users(user_id);
 
 ```sql
 -- ❌ Cross-DB 외래키 제약 없음
--- writer_id는 그냥 INT 컬럼으로만 존재
+-- writer_id는 BIGINT 컬럼으로만 존재
 -- 참조 무결성은 Application Level에서 Feign Client로 검증
 ```
+
+#### 데이터 타입 확장성 개선
+
+MSA 전환 시 **장기 운영 및 대규모 트래픽**을 고려하여 모든 ID 컬럼의 데이터 타입을 변경했습니다.
+
+| 영역 | AS-IS (Monolithic) | TO-BE (MSA) |
+|:---|:---:|:---:|
+| **DB 컬럼** | `INT` | `BIGINT` |
+| **Java Entity** | `Integer` / `Long` 혼용 | `Long` 통일 |
+| **최대값** | ~21억 | ~922경 |
+
+**변경된 컬럼 목록:**
+
+```diff
+-- 모든 PK 컬럼
+- user_id INT NOT NULL AUTO_INCREMENT
++ user_id BIGINT NOT NULL AUTO_INCREMENT
+
+- book_id INT NOT NULL AUTO_INCREMENT
++ book_id BIGINT NOT NULL AUTO_INCREMENT
+
+- sentence_id INT NOT NULL AUTO_INCREMENT
++ sentence_id BIGINT NOT NULL AUTO_INCREMENT
+
+- comment_id INT NOT NULL AUTO_INCREMENT
++ comment_id BIGINT NOT NULL AUTO_INCREMENT
+
+- vote_id INT NOT NULL AUTO_INCREMENT
++ vote_id BIGINT NOT NULL AUTO_INCREMENT
+
+-- 모든 FK 컬럼
+- writer_id INT NOT NULL
++ writer_id BIGINT NOT NULL
+
+- voter_id INT NOT NULL
++ voter_id BIGINT NOT NULL
+```
+
+**Java Entity 대응:**
+
+```java
+// AS-IS (혼용 가능성 있었음)
+@Column(name = "user_id")
+private Integer userId;  // ❌ INT와 매핑
+
+// TO-BE (통일)
+@Column(name = "user_id")
+private Long userId;     // ✅ BIGINT와 매핑
+```
+
+> [!IMPORTANT]
+> **마이그레이션 시 주의사항**
+>
+> - 기존 Monolithic DB 데이터는 `INT` → `BIGINT` 변환 시 데이터 손실 없음 (업캐스트)
+> - DTO, Request/Response 클래스도 `Long` 타입으로 통일 필요
+> - MyBatis Mapper의 `resultType`도 일치하도록 확인
 
 ---
 
@@ -813,10 +869,26 @@ cd next-page-msa/reaction-service && ./gradlew bootRun
 
 ```gradle
 dependencies {
-    api 'org.springframework.boot:spring-boot-starter-hateoas'
-    api 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    // Spring Boot Starters
     api 'org.springframework.boot:spring-boot-starter-web'
-    api 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
+    api 'org.springframework.boot:spring-boot-starter-validation'
+    api 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    // Spring Cloud OpenFeign (MSA 통신)
+    api 'org.springframework.cloud:spring-cloud-starter-openfeign'
+
+    // ModelMapper (DTO 변환)
+    api 'org.modelmapper:modelmapper:3.2.0'
+
+    // Jackson (JSON 처리)
+    api 'com.fasterxml.jackson.core:jackson-databind'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Slf4j Logging
+    api 'org.slf4j:slf4j-api'
 }
 ```
 

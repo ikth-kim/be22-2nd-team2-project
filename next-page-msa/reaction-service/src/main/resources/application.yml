@@ -6,8 +6,8 @@ management:
     web:
       base-path: /actuator
       exposure:
-        include: health,info,beans,conditions,httpexchanges,Metric,prometheus
-        exclude: threaddump, heapdump
+        include: health,info,beans,conditions,httpexchanges,metrics,prometheus
+        exclude: threaddump,heapdump
   endpoint:
     health:
       show-details: always
