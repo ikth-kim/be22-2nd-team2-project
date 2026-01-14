@@ -10,9 +10,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 移댄뀒怨좊━ ?뷀떚??
+ * 카테고리 엔티티
  *
- * @author ?뺤쭊??
+ * @author 정진호
  */
 @Entity
 @Getter
@@ -23,8 +23,8 @@ public class Category {
 
     @Id
     @Column(name = "category_id", length = 20)
-    private String categoryId; // THRILLER, ROMANCE ??
+    private String categoryId; // THRILLER, ROMANCE 등
 
     @Column(name = "category_nm", nullable = false, length = 50)
-    private String categoryName; // ?ㅻ┫?? 濡쒕㎤????
+    private String categoryName; // 스릴러, 로맨스 등
 }

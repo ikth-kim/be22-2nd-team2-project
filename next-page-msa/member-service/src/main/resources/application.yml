@@ -1,47 +1,27 @@
-server:
-  port: 8081
+# Configuration moved to Config Server (memberservice.yml)
 
-spring:
-  application:
-    name: MEMBER-SERVICE
+# Actuator Configuration (Local Override)
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,beans,conditions,httpexchanges,metrics,prometheus
+        exclude: threaddump, heapdump
+  endpoint:
+    health:
+      show-details: always
 
-  datasource:
-    driver-class-name: org.mariadb.jdbc.Driver
-    url: jdbc:mariadb://localhost:3306/next_page_member
-    username: swcamp
-    password: swcamp
-
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-        default_batch_fetch_size: 100
-
-mybatis:
-  mapper-locations: classpath:mapper/member/**/*.xml
-  type-aliases-package: com.team2.memberservice.query.member.dto
-  configuration:
-    map-underscore-to-camel-case: true
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-    register-with-eureka: true
-    fetch-registry: true
-  instance:
-    prefer-ip-address: true
-    instance-id: ${spring.application.name}:${server.port}
-
-jwt:
-  secret: ${JWT_SECRET:0b9e53ea3228c51635b0ee816888ba580e00dcd961d0d9c976a2f40dcf57bcfd}
-  access-token-validity-in-seconds: 3600
-  refresh-token-validity-in-seconds: 604800
-
-logging:
-  level:
-    com.team2.memberservice: DEBUG
-    org.springframework.security: DEBUG
+# Resilience4j Configuration (Local Override)
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10

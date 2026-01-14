@@ -14,8 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
-// TODO: Implement MemberServiceClient using Feign for MSA
-// import com.team2.reactionservice.feign.MemberServiceClient;
+import com.team2.reactionservice.feign.MemberServiceClient;
 import java.time.LocalDateTime;
 
 /**
@@ -31,8 +30,7 @@ public class ReactionController {
 
   private final ReactionService reactionService;
   private final SimpMessagingTemplate messagingTemplate;
-  // TODO: Replace with MemberServiceClient
-  // private final MemberServiceClient memberServiceClient;
+  private final MemberServiceClient memberServiceClient;
 
   /**
    * 댓글 등록 API
@@ -49,8 +47,13 @@ public class ReactionController {
 
     // 실시간 댓글 알림 전송
     Long userId = SecurityUtil.getCurrentUserId();
-    // TODO: Use Feign client to get user nickname from member-service
     String nickname = "User#" + userId;
+    try {
+      nickname = memberServiceClient.getUserNickname(userId);
+    } catch (Exception e) {
+      // Fallback or log error
+      // log.warn("Failed to fetch nickname for user {}", userId);
+    }
 
     CommentCreatedEvent event = new CommentCreatedEvent(
         commentId,

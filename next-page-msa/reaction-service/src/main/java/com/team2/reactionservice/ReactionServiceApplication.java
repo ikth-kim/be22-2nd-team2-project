@@ -17,7 +17,10 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
     "com.team2.commonmodule"
 })
 @EnableDiscoveryClient
-@EnableFeignClients
+@EnableFeignClients(basePackages = {
+    "com.team2.reactionservice",
+    "com.team2.commonmodule.feign"
+})
 @EnableJpaAuditing
 public class ReactionServiceApplication {
     public static void main(String[] args) {

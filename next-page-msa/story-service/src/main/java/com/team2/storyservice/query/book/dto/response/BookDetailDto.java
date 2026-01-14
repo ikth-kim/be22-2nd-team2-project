@@ -9,18 +9,18 @@ import java.util.List;
 import org.springframework.hateoas.RepresentationModel;
 
 /**
- * ?뚯꽕 酉곗뼱???곸꽭 DTO (臾몄옣 紐⑸줉 ?ы븿)
+ * 소설 뷰어용 상세 DTO (문장 목록 포함)
  *
- * @author ?뺤쭊??
+ * @author 정진호
  */
 @Getter
 @Setter
 @NoArgsConstructor
 public class BookDetailDto extends RepresentationModel<BookDetailDto> {
-    // 湲곕낯 ?뺣낫
+    // 기본 정보
     private Long bookId;
     private Long writerId;
-    private String writerNicknm; // ?뚯꽕 ?앹꽦???됰꽕??
+    private String writerNicknm; // 소설 생성자 닉네임
     private String categoryId;
     private String title;
     private String status;
@@ -29,11 +29,11 @@ public class BookDetailDto extends RepresentationModel<BookDetailDto> {
     private Long lastWriterUserId;
     private LocalDateTime createdAt;
 
-    // 臾몄옣 紐⑸줉
+    // 문장 목록
     private List<SentenceDto> sentences;
 
-    // ?ы몴 ?듦퀎
-    private Integer likeCount; // 醫뗭븘????
-    private Integer dislikeCount; // ?レ뼱????
-    private String myVote; // ???ы몴 ?곹깭 (LIKE/DISLIKE/null)
+    // 투표 통계
+    private Integer likeCount; // 좋아요 수
+    private Integer dislikeCount; // 싫어요 수
+    private String myVote; // 내 투표 상태 (LIKE/DISLIKE/null)
 }

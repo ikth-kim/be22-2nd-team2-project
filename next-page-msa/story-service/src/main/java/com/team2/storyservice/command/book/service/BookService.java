@@ -15,11 +15,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.team2.storyservice.command.book.entity.BookStatus;
+import com.team2.storyservice.category.repository.CategoryRepository;
 
 /**
- * ?뚯꽕 Command ?쒕퉬??(?앹꽦, 臾몄옣 ?묒꽦)
+ * 소설 Command 서비스 (생성, 문장 작성)
  *
- * @author ?뺤쭊??
+ * @author 정진호
  */
 @Service
 @Transactional
@@ -29,26 +31,27 @@ public class BookService {
         private final BookRepository bookRepository;
         private final SentenceRepository sentenceRepository;
         private final SimpMessagingTemplate messagingTemplate;
-        private final com.team2.storyservice.feign.MemberServiceClient memberServiceClient;
-        private final com.team2.storyservice.category.repository.CategoryRepository categoryRepository;
+        // Circuit Breaker 적용된 서비스 사용
+        private final MemberIntegrationService memberIntegrationService;
+        private final CategoryRepository categoryRepository;
 
         /**
-         * ?뚯꽕 諛??앹꽦
+         * 소설 방 생성
          */
         public Long createBook(Long writerId, CreateBookRequest request) {
-                // 1. Book ?앹꽦
+                // 1. Book 생성
                 Book book = Book.builder()
                                 .writerId(writerId)
                                 .categoryId(request.getCategoryId())
                                 .title(request.getTitle())
                                 .maxSequence(request.getMaxSequence())
-                                .status(com.team2.storyservice.command.book.entity.BookStatus.WRITING)
-                                .currentSequence(1) // 1踰?臾몄옣遺???쒖옉
+                                .status(BookStatus.WRITING)
+                                .currentSequence(1) // 1번 문장부터 시작
                                 .build();
 
                 Book savedBook = bookRepository.save(book);
 
-                // 2. 泥?臾몄옣 ?먮룞 ?깅줉
+                // 2. 첫 문장 자동 등록
                 Sentence firstSentence = Sentence.builder()
                                 .book(savedBook)
                                 .writerId(writerId)
@@ -58,13 +61,15 @@ public class BookService {
 
                 sentenceRepository.save(firstSentence);
 
-                // 3. ?곹깭 ?낅뜲?댄듃 (1踰?臾몄옣 ?묒꽦 ?꾨즺 泥섎━ -> ?ㅼ쓬? 2踰?
+                // 3. 상태 업데이트 (1번 문장 작성 완료 처리 -> 다음은 2번)
                 savedBook.updateStateAfterWriting(writerId);
 
                 // 4. WebSocket 이벤트 발행 (새 챕터 생성)
-                String writerNickname = memberServiceClient.getUserNickname(writerId);
+                // Circuit Breaker 적용: 에러 발생 시 "Unknown Writer" 반환
+                String writerNickname = memberIntegrationService.getUserNickname(writerId);
                 String categoryName = categoryRepository.findById(savedBook.getCategoryId())
                                 .map(c -> c.getCategoryName()).orElse("카테고리");
+
                 messagingTemplate.convertAndSend("/topic/books/new",
                                 new BookCreatedEvent(
                                                 savedBook.getBookId(),
@@ -76,18 +81,18 @@ public class BookService {
         }
 
         /**
-         * 臾몄옣 ?댁뼱 ?곌린
-         * 愿由ъ옄???곗냽 ?묒꽦 ?쒗븳???곸슜?섏? ?딆뒿?덈떎.
+         * 문장 이어 쓰기
+         * 관리자는 연속 작성 제한이 적용되지 않습니다.
          */
         public Long appendSentence(Long bookId, Long writerId, SentenceAppendRequest request) {
-                // 1. ?뚯꽕 議고쉶 (鍮꾧??????곸슜)
+                // 1. 소설 조회 (비관적 락 적용)
                 Book book = bookRepository.findByIdForUpdate(bookId)
                                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
 
-                // 2. ?묒꽦 媛???щ? 寃利?(?꾨찓??濡쒖쭅) - 愿由ъ옄???곗냽 ?묒꽦 ?덉슜
+                // 2. 작성 가능 여부 검증 (도메인 로직) - 관리자는 연속 작성 허용
                 book.validateWritingPossible(writerId, SecurityUtil.isAdmin());
 
-                // 3. 臾몄옣 ?앹꽦
+                // 3. 문장 생성
                 Sentence sentence = Sentence.builder()
                                 .book(book)
                                 .writerId(writerId)
@@ -97,11 +102,11 @@ public class BookService {
 
                 sentenceRepository.save(sentence);
 
-                // 4. ?뚯꽕 ?곹깭 ?낅뜲?댄듃 (?쒖꽌 利앷?, 留덉?留??묒꽦??媛깆떊, ?꾧껐 泥댄겕)
+                // 4. 소설 상태 업데이트 (순서 증가, 마지막 작성자 갱신, 완결 체크)
                 book.updateStateAfterWriting(writerId);
 
                 // 5. WebSocket 이벤트 발행 (새 문장 작성)
-                String writerNickname = memberServiceClient.getUserNickname(writerId);
+                String writerNickname = memberIntegrationService.getUserNickname(writerId);
                 messagingTemplate.convertAndSend("/topic/sentences/" + bookId,
                                 new SentenceCreatedEvent(
                                                 bookId,
@@ -114,7 +119,7 @@ public class BookService {
         }
 
         /**
-         * ?뚯꽕 ?섎룞 ?꾧껐 (?묒꽦???꾩슜)
+         * 소설 수동 완결 (작성자 전용)
          */
         public void completeBook(Long bookId, Long requesterId) {
                 Book book = bookRepository.findById(bookId)

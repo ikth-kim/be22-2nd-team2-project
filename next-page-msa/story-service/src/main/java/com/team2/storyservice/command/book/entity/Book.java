@@ -15,9 +15,9 @@ import com.team2.commonmodule.error.BusinessException;
 import com.team2.commonmodule.error.ErrorCode;
 
 /**
- * ?뚯꽕(Book) ?좉렇由ш굅??猷⑦듃
+ * 소설(Book) 애그리거트 루트
  *
- * @author ?뺤쭊??
+ * @author 정진호
  */
 @Entity
 @Getter
@@ -57,60 +57,60 @@ public class Book extends BaseEntity {
     private List<Sentence> sentences = new ArrayList<>();
 
     // =================================================================
-    // ?룢截?Domain Logic (Story Aggregate State Management)
-    // Assigned to: ?뺤쭊??(Core & Architecture)
+    // 핵심 Domain Logic (Story Aggregate State Management)
+    // Assigned to: 정진호 (Core & Architecture)
     // =================================================================
 
     /**
-     * 臾몄옣???묒꽦?섍린 ?꾩뿉 ?꾨찓??洹쒖튃??寃利앺빀?덈떎.
-     * 1. ?뚯꽕??WRITING ?곹깭?몄?
-     * 2. 吏곸쟾 ?묒꽦?먭? 蹂몄씤???꾨땶吏 (?곗냽 ?묒꽦 湲덉?)
+     * 문장을 작성하기 전에 도메인 규칙을 검증합니다.
+     * 1. 소설이 WRITING 상태인지
+     * 2. 직전 작성자가 본인이 아닌지 (연속 작성 금지)
      *
-     * @param writerId ?묒꽦 ?쒕룄?섎뒗 ?ъ슜??ID
-     * @throws BusinessException 洹쒖튃 ?꾨컲 ??
+     * @param writerId 작성 시도하는 사용자 ID
+     * @throws BusinessException 규칙 위반 시
      */
     public void validateWritingPossible(Long writerId) {
         validateWritingPossible(writerId, false);
     }
 
     /**
-     * 臾몄옣???묒꽦?섍린 ?꾩뿉 ?꾨찓??洹쒖튃??寃利앺빀?덈떎. (愿由ъ옄 紐⑤뱶 吏??
-     * 1. ?뚯꽕??WRITING ?곹깭?몄?
-     * 2. 吏곸쟾 ?묒꽦?먭? 蹂몄씤???꾨땶吏 (?곗냽 ?묒꽦 湲덉?) - 愿由ъ옄???덉쇅
+     * 문장을 작성하기 전에 도메인 규칙을 검증합니다. (관리자 모드 지원)
+     * 1. 소설이 WRITING 상태인지
+     * 2. 직전 작성자가 본인이 아닌지 (연속 작성 금지) - 관리자는 예외
      *
-     * @param writerId ?묒꽦 ?쒕룄?섎뒗 ?ъ슜??ID
-     * @param isAdmin  愿由ъ옄 ?щ? (true: ?곗냽 ?묒꽦 ?쒗븳 ?고쉶)
-     * @throws BusinessException 洹쒖튃 ?꾨컲 ??
+     * @param writerId 작성 시도하는 사용자 ID
+     * @param isAdmin  관리자 여부 (true: 연속 작성 제한 우회)
+     * @throws BusinessException 규칙 위반 시
      */
     public void validateWritingPossible(Long writerId, boolean isAdmin) {
         if (this.status != BookStatus.WRITING) {
             throw new BusinessException(ErrorCode.ALREADY_COMPLETED);
         }
-        // 愿由ъ옄媛 ?꾨땶 寃쎌슦?먮쭔 ?곗냽 ?묒꽦 ?쒗븳 ?곸슜
+        // 관리자가 아닌 경우에만 연속 작성 제한 적용
         if (!isAdmin && writerId.equals(this.lastWriterUserId)) {
             throw new BusinessException(ErrorCode.CONSECUTIVE_WRITING_NOT_ALLOWED);
         }
     }
 
     /**
-     * 臾몄옣 ?묒꽦???꾨즺?????뚯꽕???곹깭(?쒖꽌, 留덉?留??묒꽦??瑜??낅뜲?댄듃?⑸땲??
-     * ?먰븳 理쒕? ?쒗?ㅼ뿉 ?꾨떖?섎㈃ ?뚯꽕???꾧껐 泥섎━?⑸땲??
+     * 문장 작성이 완료되면 소설의 상태(순서, 마지막 작성자)를 업데이트합니다.
+     * 또한 최대 시퀀스에 도달하면 소설을 완결 처리합니다.
      *
-     * @param writerId ?묒꽦 ?꾨즺???ъ슜??ID
+     * @param writerId 작성 완료한 사용자 ID
      */
     public void updateStateAfterWriting(Long writerId) {
         this.lastWriterUserId = writerId;
         this.currentSequence++;
 
-        // ?꾧껐 議곌굔 泥댄겕
+        // 완결 조건 체크
         if (this.currentSequence > this.maxSequence) {
             completeStory();
         }
     }
 
     /**
-     * 臾몄옣 ??젣 ???쒗?ㅻ? 媛먯냼?쒗궢?덈떎.
-     * lastWriterUserId???몃??먯꽌 泥섎━ ???ㅼ젙?댁빞 ?⑸땲??
+     * 문장 삭제 시 시퀀스를 감소시킵니다.
+     * lastWriterUserId는 외부에서 처리 후 설정해야 합니다.
      */
     public void decrementSequence() {
         if (this.currentSequence > 1) {
@@ -123,17 +123,17 @@ public class Book extends BaseEntity {
     }
 
     /**
-     * ?뚯꽕???꾧껐 ?곹깭濡?蹂寃쏀빀?덈떎. (?대? 濡쒖쭅??
+     * 소설을 완결 상태로 변경합니다. (내부 로직용)
      */
     private void completeStory() {
         this.status = BookStatus.COMPLETED;
     }
 
     /**
-     * ?묒꽦?먯뿉 ?섑빐 ?뚯꽕??媛뺤젣濡??꾧껐?⑸땲??
-     * 沅뚰븳 泥댄겕: ?붿껌?먭? ?뚯꽕 ?앹꽦??writerId)?ъ빞 ?⑸땲??
+     * 작성자에 의해 소설을 강제로 완결합니다.
+     * 권한 체크: 요청자가 소설 생성자(writerId)여야 합니다.
      *
-     * @param requesterId ?붿껌??ID
+     * @param requesterId 요청자 ID
      */
     public void completeManually(Long requesterId) {
         if (!this.writerId.equals(requesterId)) {
@@ -150,7 +150,7 @@ public class Book extends BaseEntity {
     }
 
     /**
-     * ?뚯꽕 ?앹꽦 ??珥덇린??(?⑺넗由?硫붿꽌?쒕굹 ?앹꽦?먯뿉???몄텧)
+     * 소설 생성 시 초기화 (팩토리 메서드나 생성자에서 호출)
      */
     public void init(Long writerId, String categoryId, String title, Integer maxSequence) {
         this.writerId = writerId;
@@ -159,6 +159,6 @@ public class Book extends BaseEntity {
         this.maxSequence = maxSequence;
         this.status = BookStatus.WRITING;
         this.currentSequence = 1;
-        this.lastWriterUserId = null; // ?꾩쭅 ?묒꽦???놁쓬 (泥?臾몄옣? 蹂꾨룄 濡쒖쭅 ?곕쫫 or 泥?臾몄옣 ?묒꽦??媛깆떊)
+        this.lastWriterUserId = null; // 아직 작성자 없음 (첫 문장은 별도 로직 따름 or 첫 문장 작성자 갱신)
     }
 }

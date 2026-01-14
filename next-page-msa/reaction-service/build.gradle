@@ -10,6 +10,8 @@ tasks.named('bootJar') {
 
 dependencies {
     implementation project(':common-module')
+    implementation 'org.springframework.cloud:spring-cloud-starter-config'
+    implementation 'org.springframework.cloud:spring-cloud-starter-bootstrap'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 
@@ -19,10 +21,17 @@ dependencies {
     runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
 
     // Documentation
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.15'
 
     // HATEOAS
     implementation 'org.springframework.boot:spring-boot-starter-hateoas'
+
+    // Actuator
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // Resilience4j
+    implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
 
     // WebSocket (for real-time notifications)
     implementation 'org.springframework.boot:spring-boot-starter-websocket'

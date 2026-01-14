@@ -12,21 +12,21 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 /**
- * ?뚯꽕 Command Repository
+ * 소설 Command Repository
  *
- * @author ?뺤쭊??
+ * @author 정진호
  */
 public interface BookRepository extends JpaRepository<Book, Long> {
 
     /**
-     * 臾몄옣 ?묒꽦 ???숈떆???쒖뼱瑜??꾪빐 鍮꾧?????X-Lock)??嫄멸퀬 議고쉶?⑸땲??
-     * ?ㅻⅨ ?몃옖??뀡?????뚯꽕???묎렐?섏? 紐삵븯?꾨줉 留됱뒿?덈떎.
+     * 문장 작성 시 동시성 제어를 위해 비관적 락(X-Lock)을 걸고 조회합니다.
+     * 다른 트랜잭션에서 소설에 접근하지 못하도록 막습니다.
      *
-     * @param bookId 議고쉶???뚯꽕 ID
-     * @return ?뚯꽕 ?뷀떚??(Lock 嫄몃┝)
+     * @param bookId 조회할 소설 ID
+     * @return 소설 엔티티 (Lock 걸림)
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @QueryHints({ @QueryHint(name = "javax.persistence.lock.timeout", value = "3000") }) // 3珥???꾩븘??
+    @QueryHints({ @QueryHint(name = "javax.persistence.lock.timeout", value = "3000") }) // 3초 타임아웃
     @Query("SELECT b FROM Book b WHERE b.bookId = :bookId")
     Optional<Book> findByIdForUpdate(@Param("bookId") Long bookId);
 }

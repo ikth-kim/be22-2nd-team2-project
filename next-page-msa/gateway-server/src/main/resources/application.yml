@@ -1,54 +1,13 @@
-server:
-  port: 8000
+# Configuration moved to Config Server (gatewayserver.yml)
 
-spring:
-  application:
-    name: gateway-server
-  
-  cloud:
-    gateway:
-      globalcors:
-        cors-configurations:
-          '[/**]':
-            allowed-origins:
-              - "http://localhost:3000"
-              - "http://localhost:5173"
-              - "http://localhost:8080"
-            allowed-methods:
-              - GET
-              - POST
-              - PUT
-              - PATCH
-              - DELETE
-              - OPTIONS
-            allowed-headers: "*"
-            allow-credentials: true
-            max-age: 3600
-      
-      routes:
-        - id: member-service
-          uri: lb://MEMBER-SERVICE
-          predicates:
-            - Path=/api/auth/**, /api/members/**
-        
-        - id: story-service
-          uri: lb://STORY-SERVICE
-          predicates:
-            - Path=/api/books/**, /api/categories/**, /ws/**
-        
-        - id: reaction-service
-          uri: lb://REACTION-SERVICE
-          predicates:
-            - Path=/api/reactions/**
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-    register-with-eureka: true
-    fetch-registry: true
-  instance:
-    prefer-ip-address: true
-
-jwt:
-  secret: ${JWT_SECRET:0b9e53ea3228c51635b0ee816888ba580e00dcd961d0d9c976a2f40dcf57bcfd}
+# Actuator Configuration (Local Override)
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,beans,conditions,httpexchanges,metrics,prometheus
+        exclude: threaddump, heapdump
+  endpoint:
+    health:
+      show-details: always

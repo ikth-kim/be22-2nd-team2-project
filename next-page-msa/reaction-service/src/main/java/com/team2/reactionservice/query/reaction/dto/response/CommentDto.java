@@ -18,6 +18,7 @@ import org.springframework.hateoas.RepresentationModel;
 public class CommentDto extends RepresentationModel<CommentDto> {
     private Long commentId;
     private String content;
+    private Long writerId; // MSA: Feign Client로 조회하기 위한 ID
     private String writerNicknm;
     private LocalDateTime createdAt;
 
