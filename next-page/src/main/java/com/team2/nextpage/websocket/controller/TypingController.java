@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 /**
@@ -18,16 +19,18 @@ import org.springframework.stereotype.Controller;
 @RequiredArgsConstructor
 public class TypingController {
 
+    private final SimpMessagingTemplate messagingTemplate;
+
     /**
      * 입력 시작 이벤트 처리
      * 클라이언트: /app/typing/start
      * 브로드캐스트: /topic/typing/{bookId}
      */
     @MessageMapping("/typing/start")
-    @SendTo("/topic/typing")
-    public TypingStatus handleTypingStart(TypingStatus status) {
+    public void handleTypingStart(TypingStatus status) {
+        status.setTyping(true);
         log.debug("Typing started - Book: {}, User: {}", status.getBookId(), status.getUserNickname());
-        return status;
+        messagingTemplate.convertAndSend("/topic/typing/" + status.getBookId(), status);
     }
 
     /**
@@ -36,10 +39,10 @@ public class TypingController {
      * 브로드캐스트: /topic/typing/{bookId}
      */
     @MessageMapping("/typing/stop")
-    @SendTo("/topic/typing")
-    public TypingStatus handleTypingStop(TypingStatus status) {
+    public void handleTypingStop(TypingStatus status) {
+        status.setTyping(false);
         log.debug("Typing stopped - Book: {}, User: {}", status.getBookId(), status.getUserNickname());
-        return status;
+        messagingTemplate.convertAndSend("/topic/typing/" + status.getBookId(), status);
     }
 
     /**
@@ -48,10 +51,10 @@ public class TypingController {
      * 브로드캐스트: /topic/comment-typing/{bookId}
      */
     @MessageMapping("/comment-typing/start")
-    @SendTo("/topic/comment-typing")
-    public TypingStatus handleCommentTypingStart(TypingStatus status) {
+    public void handleCommentTypingStart(TypingStatus status) {
+        status.setTyping(true);
         log.debug("Comment typing started - Book: {}, User: {}", status.getBookId(), status.getUserNickname());
-        return status;
+        messagingTemplate.convertAndSend("/topic/comment-typing/" + status.getBookId(), status);
     }
 
     /**
@@ -60,9 +63,9 @@ public class TypingController {
      * 브로드캐스트: /topic/comment-typing/{bookId}
      */
     @MessageMapping("/comment-typing/stop")
-    @SendTo("/topic/comment-typing")
-    public TypingStatus handleCommentTypingStop(TypingStatus status) {
+    public void handleCommentTypingStop(TypingStatus status) {
+        status.setTyping(false);
         log.debug("Comment typing stopped - Book: {}, User: {}", status.getBookId(), status.getUserNickname());
-        return status;
+        messagingTemplate.convertAndSend("/topic/comment-typing/" + status.getBookId(), status);
     }
 }

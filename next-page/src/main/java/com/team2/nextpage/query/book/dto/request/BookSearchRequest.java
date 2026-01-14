@@ -26,6 +26,7 @@ public class BookSearchRequest {
     private String status; // 상태 필터 (WRITING, COMPLETED)
     private String categoryId; // 카테고리 필터
     private String keyword; // 제목 검색 키워드
+    private Long writerId; // 작성자 ID 필터
 
     /**
      * 페이지 오프셋 계산

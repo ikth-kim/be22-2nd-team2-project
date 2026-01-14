@@ -6,13 +6,18 @@ import com.team2.nextpage.command.reaction.dto.request.VoteRequest;
 import com.team2.nextpage.command.reaction.entity.BookVote;
 import com.team2.nextpage.command.reaction.entity.Comment;
 import com.team2.nextpage.command.reaction.entity.SentenceVote;
+import com.team2.nextpage.command.reaction.entity.VoteType;
 import com.team2.nextpage.command.reaction.repository.BookVoteRepository;
 import com.team2.nextpage.command.reaction.repository.CommentRepository;
 import com.team2.nextpage.command.reaction.repository.SentenceVoteRepository;
+import com.team2.nextpage.command.book.entity.Sentence;
+import com.team2.nextpage.command.book.repository.SentenceRepository;
+import com.team2.nextpage.websocket.dto.VoteUpdateDto;
 import com.team2.nextpage.common.error.BusinessException;
 import com.team2.nextpage.common.error.ErrorCode;
 import com.team2.nextpage.common.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +36,8 @@ public class ReactionService {
   private final CommentRepository commentRepository;
   private final BookVoteRepository bookVoteRepository;
   private final SentenceVoteRepository sentenceVoteRepository;
+  private final SimpMessagingTemplate messagingTemplate;
+  private final SentenceRepository sentenceRepository;
 
   /**
    * 댓글 작성
@@ -118,10 +125,12 @@ public class ReactionService {
       // 2. 이미 투표 후 또 누르면 -> 취소
       if (vote.getVoteType() == request.getVoteType()) {
         bookVoteRepository.delete(vote);
+        broadcastBookVote(request.getBookId());
         return false;
       } else {
         // 다른 걸 눌렀다면, 다른 걸로 변경(좋아요 -> 싫어요, 싫어요 -> 좋아요)
         vote.changeVoteType(request.getVoteType());
+        broadcastBookVote(request.getBookId());
         return true; // 투표 변경
       }
     } else {
@@ -131,8 +140,23 @@ public class ReactionService {
           .voteType(request.getVoteType())
           .build();
       bookVoteRepository.save(newVote);
+      broadcastBookVote(request.getBookId());
       return true;
     }
+  }
+
+  private void broadcastBookVote(Long bookId) {
+    long likeCount = bookVoteRepository.countByBookIdAndVoteType(bookId, VoteType.LIKE);
+    long dislikeCount = bookVoteRepository.countByBookIdAndVoteType(bookId, VoteType.DISLIKE);
+
+    VoteUpdateDto updateDto = VoteUpdateDto.builder()
+        .targetType("BOOK")
+        .targetId(bookId)
+        .likeCount(likeCount)
+        .dislikeCount(dislikeCount)
+        .build();
+
+    messagingTemplate.convertAndSend("/topic/books/" + bookId + "/votes", updateDto);
   }
 
   /**
@@ -156,10 +180,12 @@ public class ReactionService {
       // 2. 이미 투표 후 또 누르면 -> 취소
       if (vote.getVoteType() == request.getVoteType()) {
         sentenceVoteRepository.delete(vote);
+        broadcastSentenceVote(sentenceId);
         return false;
       } else {
         // 다른 걸 눌렀다면, 다른 걸로 변경(좋아요 -> 싫어요, 싫어요 -> 좋아요)
         vote.changeVoteType(request.getVoteType());
+        broadcastSentenceVote(sentenceId);
         return true; // 투표 변경
       }
     } else {
@@ -169,7 +195,29 @@ public class ReactionService {
           .voteType(request.getVoteType())
           .build();
       sentenceVoteRepository.save(newVote);
+      broadcastSentenceVote(sentenceId);
       return true;
+    }
+  }
+
+  private void broadcastSentenceVote(Long sentenceId) {
+    long likeCount = sentenceVoteRepository.countBySentenceIdAndVoteType(sentenceId, VoteType.LIKE);
+    long dislikeCount = sentenceVoteRepository.countBySentenceIdAndVoteType(sentenceId, VoteType.DISLIKE);
+
+    // Find bookId to determine the topic
+    Long bookId = sentenceRepository.findById(sentenceId)
+        .map(sentence -> sentence.getBook().getBookId())
+        .orElse(null);
+
+    if (bookId != null) {
+      VoteUpdateDto updateDto = VoteUpdateDto.builder()
+          .targetType("SENTENCE")
+          .targetId(sentenceId)
+          .likeCount(likeCount)
+          .dislikeCount(dislikeCount)
+          .build();
+
+      messagingTemplate.convertAndSend("/topic/books/" + bookId + "/votes", updateDto);
     }
   }
 

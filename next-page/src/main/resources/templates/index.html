@@ -8,7 +8,7 @@
 
 <body>
 
-    <div layout:fragment="content">
+    <div layout:fragment="content" id="app">
         <!-- Floating Atmosphere (Only on index page) -->
         <div class="shape shape-1"></div>
         <div class="shape shape-2"></div>
@@ -28,6 +28,10 @@
                     <button onclick="openModal('signup-modal')" class="btn btn-primary"
                         style="font-size: 1.1rem; padding: 12px 30px;">회원가입</button>
                 </div>
+                <!-- Note: This user-only part is managed by server-side or auth token check. 
+                     Since we are moving to Vue, we might want to check auth token for this display too 
+                     or rely on server-side rendering for initial state if thymeleaf handles it. 
+                     For now, I'll keep the static style check or add v-if based on token. -->
                 <div class="user-only" style="display: none; justify-content: center;">
                     <a href="/books/new" class="btn btn-primary" style="font-size: 1.1rem; padding: 12px 30px;">이야기
                         시작하기</a>
@@ -38,146 +42,192 @@
         <!-- Filter & Search -->
         <div class="card"
             style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; z-index: 10; position: relative; margin-bottom: 30px;">
-            <select class="form-control" style="width: auto;" id="category-filter">
+            <select v-model="filters.categoryId" class="form-control" style="width: auto;">
                 <option value="">전체 카테고리</option>
-                <option value="ROMANCE">로맨스</option>
-                <option value="THRILLER">스릴러</option>
-                <option value="FANTASY">판타지</option>
+                <option v-for="cat in categories" :key="cat.categoryId" :value="cat.categoryId">{{ cat.categoryName }}
+                </option>
             </select>
-            <select class="form-control" style="width: auto;" id="status-filter">
+            <select v-model="filters.status" class="form-control" style="width: auto;">
                 <option value="">모든 상태</option>
                 <option value="WRITING">연재중</option>
                 <option value="COMPLETED">완결</option>
             </select>
-            <input type="text" class="form-control" placeholder="제목/작가 검색..." style="flex: 1;" id="search-keyword">
+            <input type="text" v-model="filters.keyword" class="form-control" placeholder="제목/작가 검색..." style="flex: 1;"
+                @input="debouncedSearch">
         </div>
 
         <!-- Book Grid -->
         <div class="grid" id="book-list">
-            <!-- JS will populate this -->
-            <div class="card">
+            <div v-for="book in books" :key="book.bookId" class="card" @click="goDetail(book.bookId)"
+                style="cursor: pointer; animation: slideInFromBottom 0.5s ease-out;">
+                <div class="book-cover-placeholder">
+                    <span class="book-icon">{{ getIcon(book.categoryId) }}</span>
+                </div>
+                <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <span class="badge" :class="book.status === 'WRITING' ? 'badge-writing' : 'badge-completed'">{{
+                        book.status }}</span>
+                    <span
+                        style="font-size: 0.8rem; color: var(--text-muted); text-transform:uppercase; letter-spacing:1px;">{{
+                        getCategoryName(book.categoryId) }}</span>
+                </div>
+                <h3
+                    style="margin-bottom: 10px; font-size: 1.4rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    {{ book.title }}</h3>
+                <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
+                    <span style="color: var(--primary-color);">Make by.</span> {{ book.writerNicknm || '작가님' }}
+                </p>
                 <div
-                    style="height: 150px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; color: var(--text-muted);">
+                    style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">
+                        👥 {{ book.participantCount || 1 }}명 참여
+                    </span>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">
+                        📝 {{ book.currentSequence }} 문장
+                    </span>
+                </div>
+            </div>
+
+            <!-- Loading Spinner / Sentinel -->
+            <div id="sentinel" style="height: 20px; grid-column: 1/-1;">
+                <div v-if="loading" class="text-center" style="padding: 20px; color: var(--text-muted);">
                     Loading...
                 </div>
+            </div>
+
+            <div v-if="books.length === 0 && !loading" class="card"
+                style="grid-column: 1/-1; padding: 60px 20px; text-align: center;">
+                <div style="font-size: 4rem; margin-bottom: 20px;">📚</div>
+                <h3 style="color: var(--text-muted); margin-bottom: 10px;">등록된 소설이 없습니다.</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">다른 검색어를 시도하거나 새로운 이야기를 시작해보세요!</p>
             </div>
         </div>
     </div>
 
     <th:block layout:fragment="script">
         <script>
-            let searchTimeout = null;
+            const { createApp } = Vue;
 
-            $(document).ready(function () {
-                // Load categories for filter
-                window.categoryMap = {}; // Global Map
-                $.ajax({
-                    url: '/api/categories',
-                    method: 'GET',
-                    success: function (response) {
-                        const categories = response.data;
-                        const $filter = $('#category-filter');
-                        // Keep 'All' option
-                        $filter.find('option:not(:first)').remove();
-                        categories.forEach(cat => {
-                            $filter.append(`<option value="${cat.categoryId}">${cat.categoryName}</option>`);
-                            window.categoryMap[cat.categoryId] = cat.categoryName;
-                        });
+            createApp({
+                data() {
+                    return {
+                        books: [],
+                        categories: [],
+                        categoryMap: {},
+                        filters: {
+                            categoryId: '',
+                            status: '',
+                            keyword: ''
+                        },
+                        page: 0,
+                        size: 20,
+                        loading: false,
+                        hasNext: true,
+                        searchTimeout: null,
+                        observer: null
                     }
-                });
-
-                loadBooks();
-
-                // Real-time search on input (with debouncing)
-                $('#search-keyword').on('input', function () {
-                    clearTimeout(searchTimeout);
-                    searchTimeout = setTimeout(function () {
-                        loadBooks();
-                    }, 500); // 500ms delay to avoid too many requests
-                });
-
-                // Auto-search on filter change
-                $('#category-filter, #status-filter').on('change', function () {
-                    loadBooks();
-                });
-            });
-
-            function loadBooks() {
-                const category = $('#category-filter').val();
-                const status = $('#status-filter').val();
-                const keyword = $('#search-keyword').val();
-
-                // 실제 API 호출 (파라미터 구성 필요)
-                $.ajax({
-                    url: '/api/books',
-                    method: 'GET',
-                    data: { categoryId: category, status: status, keyword: keyword, page: 0, size: 20 },
-                    success: function (response) {
-                        const books = response.data.content; // Extract list from PageResponse
-                        const $grid = $('#book-list');
-                        $grid.empty();
-
-                        if (books.length === 0) {
-                            const emptyMsg = keyword ?
-                                `"${keyword}"에 대한 검색 결과가 없습니다.` :
-                                '등록된 소설이 없습니다.';
-                            $grid.html(`
-                                <div class="card" style="grid-column: 1/-1; padding: 60px 20px; text-align: center;">
-                                    <div style="font-size: 4rem; margin-bottom: 20px;">📚</div>
-                                    <h3 style="color: var(--text-muted); margin-bottom: 10px;">${emptyMsg}</h3>
-                                    <p style="color: var(--text-muted); font-size: 0.9rem;">다른 검색어를 시도하거나 새로운 이야기를 시작해보세요!</p>
-                                </div>
-                            `);
-                            return;
+                },
+                mounted() {
+                    this.fetchCategories();
+                    this.loadBooks();
+                    this.setupObserver();
+                    this.checkAuth();
+                },
+                watch: {
+                    'filters.categoryId': 'resetAndLoad',
+                    'filters.status': 'resetAndLoad'
+                },
+                methods: {
+                    checkAuth() {
+                        if (localStorage.getItem('accessToken')) {
+                            $('.user-only').show(); // Legacy support or just use v-show inside Vue
+                            $('.user-only').css('display', 'flex'); // Flex for button container
+                            $('.guest-only').hide();
+                        } else {
+                            $('.user-only').hide();
+                            $('.guest-only').show();
                         }
-
-                        books.forEach(book => {
-                            const statusClass = book.status === 'WRITING' ? 'badge-writing' : 'badge-completed';
-                            // Determine icon based on categoryId (Robust)
-                            let icon = '📖';
-                            const catId = book.categoryId;
-                            if (catId === 'ROMANCE') icon = '💖';
-                            else if (catId === 'THRILLER') icon = '🔪';
-                            else if (catId === 'FANTASY') icon = '🏰';
-                            else if (catId === 'SF') icon = '👽';
-                            else if (catId === 'MYSTERY') icon = '🕵️';
-                            else if (catId === 'DAILY') icon = '☕';
-
-                            const displayCategoryName = window.categoryMap && window.categoryMap[catId] ? window.categoryMap[catId] : catId;
-                            const displayWriter = book.writerNicknm || '작가님';
-
-                            const html = `
-                        <div class="card" onclick="location.href='/books/${book.bookId}'" style="cursor: pointer;">
-                            <div class="book-cover-placeholder">
-                                <span class="book-icon">${icon}</span>
-                            </div>
-                            <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-                                <span class="badge ${statusClass}">${book.status}</span>
-                                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform:uppercase; letter-spacing:1px;">${displayCategoryName}</span>
-                            </div>
-                            <h3 style="margin-bottom: 10px; font-size: 1.4rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${book.title}</h3>
-                            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
-                                <span style="color: var(--primary-color);">Make by.</span> ${displayWriter}
-                            </p>
-                            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
-                                <span style="font-size: 0.85rem; color: var(--text-muted);">
-                                    👥 ${book.participantCount || 1}명 참여
-                                </span>
-                                <span style="font-size: 0.85rem; color: var(--text-muted);">
-                                    📝 ${book.currentSequence} 문장
-                                </span>
-                            </div>
-                        </div>
-                    `;
-                            $grid.append(html);
+                    },
+                    fetchCategories() {
+                        $.ajax({
+                            url: '/api/categories',
+                            method: 'GET',
+                            success: (response) => {
+                                this.categories = response.data;
+                                this.categories.forEach(cat => {
+                                    this.categoryMap[cat.categoryId] = cat.categoryName;
+                                });
+                            }
                         });
                     },
-                    error: function () {
-                        // API 서버가 아직 준비 안되었거나 연결 실패 시 더미 데이터 표시 (데모용)
-                        // alert('소설 목록을 불러오는데 실패했습니다.');
+                    loadBooks(isAppend = false) {
+                        if (this.loading || (!this.hasNext && isAppend)) return;
+                        this.loading = true;
+
+                        $.ajax({
+                            url: '/api/books',
+                            method: 'GET',
+                            data: {
+                                categoryId: this.filters.categoryId,
+                                status: this.filters.status,
+                                keyword: this.filters.keyword,
+                                page: this.page,
+                                size: this.size
+                            },
+                            success: (response) => {
+                                const data = response.data;
+                                if (isAppend) {
+                                    this.books = [...this.books, ...data.content];
+                                } else {
+                                    this.books = data.content;
+                                }
+                                this.hasNext = !data.last;
+                                if (this.hasNext) this.page++;
+                                this.loading = false;
+                            },
+                            error: () => {
+                                this.loading = false;
+                            }
+                        });
+                    },
+                    resetAndLoad() {
+                        this.page = 0;
+                        this.hasNext = true;
+                        this.books = [];
+                        this.loadBooks();
+                    },
+                    debouncedSearch() {
+                        clearTimeout(this.searchTimeout);
+                        this.searchTimeout = setTimeout(() => {
+                            this.resetAndLoad();
+                        }, 500);
+                    },
+                    setupObserver() {
+                        this.observer = new IntersectionObserver((entries) => {
+                            if (entries[0].isIntersecting) {
+                                this.loadBooks(true);
+                            }
+                        }, { threshold: 0.1 });
+                        const sentinel = document.getElementById('sentinel');
+                        if (sentinel) this.observer.observe(sentinel);
+                    },
+                    goDetail(bookId) {
+                        window.location.href = '/books/' + bookId;
+                    },
+                    getCategoryName(id) {
+                        return this.categoryMap[id] || id || '미분류';
+                    },
+                    getIcon(catId) {
+                        const name = this.categoryMap[catId] || '';
+                        if (catId === 'ROMANCE' || name.includes('로맨스')) return '💖';
+                        if (catId === 'THRILLER' || name.includes('스릴러')) return '🔪';
+                        if (catId === 'FANTASY' || name.includes('판타지')) return '🏰';
+                        if (catId === 'SF' || name.includes('SF')) return '👽';
+                        if (catId === 'MYSTERY' || name.includes('미스터리')) return '🕵️';
+                        if (catId === 'DAILY' || name.includes('일상')) return '☕';
+                        return '📖';
                     }
-                });
-            }
+                }
+            }).mount('#app');
         </script>
     </th:block>
 

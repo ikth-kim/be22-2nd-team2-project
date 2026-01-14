@@ -4,6 +4,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.springframework.hateoas.RepresentationModel;
+
 /**
  * 회원 조회용 DTO (마이페이지 활동 통계 포함)
  *
@@ -12,7 +14,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class MemberDto {
+public class MemberDto extends RepresentationModel<MemberDto> {
     // 기본 정보
     private Long userId;
     private String userEmail;

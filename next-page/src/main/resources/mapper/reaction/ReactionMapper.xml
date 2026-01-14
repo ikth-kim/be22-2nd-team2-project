@@ -17,4 +17,30 @@
         ORDER BY c.created_at ASC, c.comment_id ASC
     </select>
 
+    <!-- 특정 사용자가 쓴 댓글 조회 (페이징) -->
+    <select id="findCommentsByWriterId" resultType="CommentDto">
+        SELECT
+            c.comment_id,
+            c.content,
+            u.user_nicknm AS writerNicknm,
+            c.created_at,
+            c.parent_id AS parentId,
+            b.title AS bookTitle,
+            c.book_id
+        FROM comments c
+                 JOIN users u ON c.writer_id = u.user_id
+                 LEFT JOIN books b ON c.book_id = b.book_id
+        WHERE c.writer_id = #{writerId}
+          AND c.deleted_at IS NULL
+        ORDER BY c.created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 특정 사용자가 쓴 댓글 개수 조회 -->
+    <select id="countCommentsByWriterId" resultType="long">
+        SELECT COUNT(*)
+        FROM comments
+        WHERE writer_id = #{writerId}
+          AND deleted_at IS NULL
+    </select>
 </mapper>

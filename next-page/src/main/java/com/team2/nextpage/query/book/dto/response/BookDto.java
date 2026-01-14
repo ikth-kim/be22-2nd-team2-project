@@ -5,6 +5,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.time.LocalDateTime;
 
+import org.springframework.hateoas.RepresentationModel;
+
 /**
  * 소설 조회용 DTO
  *
@@ -13,7 +15,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-public class BookDto {
+public class BookDto extends RepresentationModel<BookDto> {
     private Long bookId;
     private Long writerId;
     private String categoryId;

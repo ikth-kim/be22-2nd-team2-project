@@ -109,10 +109,44 @@ public class Book extends BaseEntity {
     }
 
     /**
-     * 소설을 완결 상태로 변경합니다.
+     * 문장 삭제 후 시퀀스를 감소시킵니다.
+     * lastWriterUserId는 외부에서 처리 후 설정해야 합니다.
+     */
+    public void decrementSequence() {
+        if (this.currentSequence > 1) {
+            this.currentSequence--;
+        }
+    }
+
+    public void updateLastWriterUserId(Long writerId) {
+        this.lastWriterUserId = writerId;
+    }
+
+    /**
+     * 소설을 완결 상태로 변경합니다. (내부 로직용)
      */
     private void completeStory() {
         this.status = BookStatus.COMPLETED;
+    }
+
+    /**
+     * 작성자에 의해 소설을 강제로 완결합니다.
+     * 권한 체크: 요청자가 소설 생성자(writerId)여야 합니다.
+     *
+     * @param requesterId 요청자 ID
+     */
+    public void completeManually(Long requesterId) {
+        if (!this.writerId.equals(requesterId)) {
+            throw new BusinessException(ErrorCode.NOT_BOOK_OWNER);
+        }
+        if (this.status == BookStatus.COMPLETED) {
+            throw new BusinessException(ErrorCode.ALREADY_COMPLETED);
+        }
+        this.status = BookStatus.COMPLETED;
+    }
+
+    public void updateTitle(String title) {
+        this.title = title;
     }
 
     /**

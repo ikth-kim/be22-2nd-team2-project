@@ -114,4 +114,98 @@ public class BookService {
 
                 return sentence.getSentenceId();
         }
+
+        /**
+         * 소설 수동 완결 (작성자 전용)
+         */
+        public void completeBook(Long bookId, Long requesterId) {
+                Book book = bookRepository.findById(bookId)
+                                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+
+                book.completeManually(requesterId);
+        }
+
+        public void updateBookTitle(Long bookId, Long requesterId, String title) {
+                Book book = bookRepository.findById(bookId)
+                                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+
+                if (!book.getWriterId().equals(requesterId) && !SecurityUtil.isAdmin()) {
+                        throw new BusinessException(ErrorCode.NOT_BOOK_OWNER);
+                }
+
+                book.updateTitle(title);
+        }
+
+        public void updateSentence(Long bookId, Long sentenceId, Long requesterId, String content) {
+                Sentence sentence = sentenceRepository.findById(sentenceId)
+                                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+
+                if (!sentence.getWriterId().equals(requesterId) && !SecurityUtil.isAdmin()) {
+                        throw new BusinessException(ErrorCode.NOT_BOOK_OWNER);
+                }
+
+                if (!sentence.getBook().getBookId().equals(bookId)) {
+                        throw new BusinessException(ErrorCode.ENTITY_NOT_FOUND);
+                }
+
+                // Check if it's the last sentence
+                if (sentence.getSequenceNo() != sentence.getBook().getCurrentSequence() - 1) {
+                        throw new BusinessException(ErrorCode.SEQUENCE_MISMATCH); // Only last sentence can be edited
+                }
+
+                sentence.updateContent(content);
+        }
+
+        public void deleteSentence(Long bookId, Long sentenceId, Long requesterId) {
+                Sentence sentence = sentenceRepository.findById(sentenceId)
+                                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+
+                if (!sentence.getWriterId().equals(requesterId) && !SecurityUtil.isAdmin()) {
+                        throw new BusinessException(ErrorCode.NOT_BOOK_OWNER);
+                }
+
+                Book book = sentence.getBook();
+                if (!book.getBookId().equals(bookId)) {
+                        throw new BusinessException(ErrorCode.ENTITY_NOT_FOUND);
+                }
+
+                // Only allow deleting the LAST sentence
+                if (sentence.getSequenceNo() != book.getCurrentSequence() - 1) {
+                        throw new BusinessException(ErrorCode.SEQUENCE_MISMATCH); // Only last sentence can be deleted
+                }
+
+                int deletedSequence = sentence.getSequenceNo();
+                boolean isLast = (deletedSequence == book.getCurrentSequence() - 1);
+
+                sentenceRepository.delete(sentence);
+
+                if (!isLast) {
+                        sentenceRepository.decreaseSequenceAfter(bookId, deletedSequence);
+                }
+
+                book.decrementSequence();
+
+                // If deleted sentence was the last one, update lastWriterUserId to the previous
+                // one
+                if (isLast) {
+                        int newLastSeq = deletedSequence - 1;
+                        if (newLastSeq > 0) {
+                                sentenceRepository.findByBookAndSequenceNo(book, newLastSeq)
+                                                .ifPresent(s -> book.updateLastWriterUserId(s.getWriterId()));
+                        } else {
+                                book.updateLastWriterUserId(null);
+                        }
+                }
+        }
+
+        public void deleteBook(Long bookId, Long requesterId) {
+                Book book = bookRepository.findById(bookId)
+                                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
+
+                if (!book.getWriterId().equals(requesterId) && !SecurityUtil.isAdmin()) {
+                        throw new BusinessException(ErrorCode.NOT_BOOK_OWNER);
+                }
+
+                bookRepository.delete(book);
+        }
 }

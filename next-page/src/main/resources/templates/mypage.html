@@ -9,95 +9,307 @@
 <body>
 
     <div layout:fragment="content">
-        <div class="card fade-in" style="max-width: 800px; margin: 0 auto;">
-            <h2 class="text-center mb-4">내 서재</h2>
+        <div class="card fade-in" style="max-width: 900px; margin: 0 auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin:0;">내 서재</h2>
+                <button class="btn btn-outline" style="border-color: #ef4444; color: #ef4444; font-size: 0.85rem;"
+                    onclick="withdraw()">회원 탈퇴</button>
+            </div>
 
-            <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-bottom: 40px;">
-                <div class="card text-center" style="flex: 1; min-width: 150px; background: rgba(139, 92, 246, 0.1);">
-                    <h4 style="color: var(--text-muted);">내가 만든 소설</h4>
-                    <div id="my-book-count" style="font-size: 2.5rem; font-weight: 700; color: var(--primary-color);">0
-                    </div>
-                </div>
-                <div class="card text-center" style="flex: 1; min-width: 150px; background: rgba(236, 72, 153, 0.1);">
-                    <h4 style="color: var(--text-muted);">내가 쓴 문장</h4>
-                    <div id="my-sentence-count"
-                        style="font-size: 2.5rem; font-weight: 700; color: var(--secondary-color);">0</div>
-                </div>
-                <div class="card text-center" style="flex: 1; min-width: 150px; background: rgba(6, 182, 212, 0.1);">
-                    <h4 style="color: var(--text-muted);">내가 쓴 댓글</h4>
-                    <div id="my-comment-count" style="font-size: 2.5rem; font-weight: 700; color: var(--accent-color);">
-                        0</div>
+            <div id="profile-section"
+                style="margin-bottom: 30px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 12px;">
+                <div id="profile-info" style="color: var(--text-muted); font-size: 0.95rem;">
+                    Loading profile...
                 </div>
             </div>
 
-            <div class="text-center">
-                <h3>프로필 정보</h3>
-                <div id="profile-info" style="margin-top: 20px; color: var(--text-muted);">
-                    Loading...
+            <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-bottom: 40px;">
+                <div class="stats-card" style="flex: 1; min-width: 160px;">
+                    <span class="stat-number" id="my-book-count">0</span>
+                    <span class="stat-label">내가 만든 소설</span>
                 </div>
-                <button class="btn btn-outline" style="margin-top: 30px; border-color: #ef4444; color: #ef4444;"
-                    onclick="withdraw()">회원 탈퇴</button>
+                <div class="stats-card" style="flex: 1; min-width: 160px;">
+                    <span class="stat-number" id="my-sentence-count">0</span>
+                    <span class="stat-label">내가 쓴 문장</span>
+                </div>
+                <div class="stats-card" style="flex: 1; min-width: 160px;">
+                    <span class="stat-number" id="my-comment-count">0</span>
+                    <span class="stat-label">내가 쓴 댓글</span>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs"
+                style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                <button class="btn btn-ghost active" id="tab-books" onclick="switchTab('books')">내가 만든 소설</button>
+                <button class="btn btn-ghost" id="tab-sentences" onclick="switchTab('sentences')">내가 쓴 문장</button>
+                <button class="btn btn-ghost" id="tab-comments" onclick="switchTab('comments')">내가 쓴 댓글</button>
+            </div>
+
+            <!-- List Container -->
+            <div id="list-container" style="min-height: 200px;">
+                <!-- Content injected here -->
+            </div>
+
+            <!-- Pagination -->
+            <div id="pagination" style="display: flex; justify-content: center; gap: 10px; margin-top: 20px;">
+                <!-- Buttons injected here -->
             </div>
         </div>
     </div>
 
     <th:block layout:fragment="script">
         <script>
-            $(document).ready(function () {
-                if (!localStorage.getItem('accessToken')) {
-                    // Prevent duplicate toasts
-                    if (!window.isLoginToastShown) {
-                        showToast('로그인이 필요합니다.', 'error');
-                        window.isLoginToastShown = true;
-                        setTimeout(() => window.isLoginToastShown = false, 3000);
-                    }
+            let currentTab = 'books';
+            let currentPage = 0;
+            const pageSize = 10;
+            let currentUserId = null;
+            let memberLinks = {};
 
-                    // Open Modal Forcefully (cannot be closed by clicking outside)
-                    openModal('login-modal', true);
+            $(document).ready(function () {
+                if (!isAuthenticated()) {
+                    requireAuth({
+                        message: '로그인이 필요한 페이지입니다.',
+                        redirect: true,
+                        force: true
+                    });
+                    $('.card').hide();
                     return;
                 }
 
+                loadProfile();
+            });
+
+            function loadProfile() {
                 $.ajax({
                     url: '/api/members/me',
                     method: 'GET',
                     success: function (response) {
                         const data = response.data;
+                        currentUserId = data.userId;
+
+                        // Store HATEOAS links
+                        if (data._links) {
+                            memberLinks = data._links;
+                        }
+
                         $('#my-book-count').text(data.createdBookCount || 0);
                         $('#my-sentence-count').text(data.writtenSentenceCount || 0);
                         $('#my-comment-count').text(data.writtenCommentCount || 0);
 
                         $('#profile-info').html(`
-                <p><strong>이메일:</strong> ${data.userEmail}</p>
-                <p><strong>닉네임:</strong> ${data.userNicknm}</p>
-                <p><strong>권한:</strong> ${data.userRole}</p>
-                `);
+                            <span style="margin-right: 15px;"><strong>${data.userNicknm}</strong>님</span>
+                            <span style="margin-right: 15px;">${data.userEmail}</span>
+                            <span class="badge badge-writing">${data.userRole}</span>
+                        `);
+
+                        // Initial Load
+                        loadList(0);
                     },
-                    error: function (xhr) {
-                        if (xhr.status === 401) return; // Handled by global handler
+                    error: function () {
                         showToast('정보를 불러오는데 실패했습니다.', 'error');
                     }
                 });
-            });
+            }
+
+            function switchTab(tab) {
+                currentTab = tab;
+                currentPage = 0;
+                $('.tabs .btn').removeClass('active');
+                $(`#tab-${tab}`).addClass('active');
+                $('.tabs .btn.active').css('border-bottom', '2px solid var(--primary-color)');
+                $('.tabs .btn:not(.active)').css('border-bottom', 'none');
+
+                loadList(0);
+            }
+
+            function loadList(page) {
+                currentPage = page;
+                $('#list-container').html('<div style="text-align:center; padding: 20px;">Loading...</div>');
+                $('#pagination').empty();
+
+                if (currentTab === 'books') loadMyBooks(page);
+                else if (currentTab === 'sentences') loadMySentences(page);
+                else if (currentTab === 'comments') loadMyComments(page);
+            }
+
+            function loadMyBooks(page) {
+                // Not fully HATEOAS yet for this specific custom filter, fallback to hardcoded
+                $.ajax({
+                    url: '/api/books',
+                    method: 'GET',
+                    data: { writerId: currentUserId, page: page, size: pageSize },
+                    success: function (response) {
+                        renderBooks(response.data);
+                    }
+                });
+            }
+
+            function loadMySentences(page) {
+                const url = (memberLinks['my-sentences'])
+                    ? memberLinks['my-sentences'].href
+                    : '/api/books/mysentences'; // Fallback
+
+                // HATEOAS link might contain template variables or default params.
+                // Since we want to pass specific page/size, we might need to handle it.
+                // Simple append works if URL usually has no query params, but if it has {?page,size}, we need to parse.
+                // For now, assuming basic URL structure or appending params.
+                // Ideally, we follow the link exactly or use a library, but mostly we just append params for paging here.
+
+                // If using the stored link href (which includes ?page=0&size=10 from backend construction),
+                // we should probably replace the params or just use base and append.
+                // The backend creates link with current values.
+                // Let's rely on manual param passing for now to ensure paging works as expected with the UI logic.
+
+                // Clean URL from params if present to re-append clean params
+                const baseUrl = url.split('?')[0];
+
+                $.ajax({
+                    url: baseUrl,
+                    method: 'GET',
+                    data: { page: page, size: pageSize },
+                    success: function (response) {
+                        renderSentences(response.data);
+                    }
+                });
+            }
+
+            function loadMyComments(page) {
+                const url = (memberLinks['my-comments'])
+                    ? memberLinks['my-comments'].href
+                    : '/api/reactions/mycomments'; // Fallback
+
+                const baseUrl = url.split('?')[0];
+
+                $.ajax({
+                    url: baseUrl,
+                    method: 'GET',
+                    data: { page: page, size: pageSize },
+                    success: function (response) {
+                        renderCommentsList(response.data);
+                    }
+                });
+            }
+
+            function renderBooks(pageData) {
+                const list = pageData.content;
+                const container = $('#list-container');
+                container.empty();
+
+                if (!list || list.length === 0) {
+                    container.html('<p style="text-align:center; color: var(--text-muted); padding: 20px;">작성한 소설이 없습니다.</p>');
+                    return;
+                }
+
+                list.forEach(book => {
+                    const html = `
+                        <div class="card" onclick="location.href='/books/${book.bookId}'" style="cursor: pointer; padding: 15px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <h4 style="margin: 0 0 5px 0;">${book.title}</h4>
+                                <span style="font-size: 0.8rem; color: var(--text-muted);">${new Date(book.createdAt).toLocaleDateString()}</span>
+                                <span class="badge ${book.status === 'WRITING' ? 'badge-writing' : 'badge-completed'}" style="margin-left: 10px; font-size: 0.7rem;">${book.status}</span>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">문장 ${book.currentSequence} / ${book.maxSequence}</div>
+                            </div>
+                        </div>
+                    `;
+                    container.append(html);
+                });
+                renderPagination(pageData);
+            }
+
+            function renderSentences(pageData) {
+                const list = pageData.content;
+                const container = $('#list-container');
+                container.empty();
+
+                if (!list || list.length === 0) {
+                    container.html('<p style="text-align:center; color: var(--text-muted); padding: 20px;">작성한 문장이 없습니다.</p>');
+                    return;
+                }
+
+                list.forEach(sent => {
+                    const clickAction = sent.bookId ? `onclick="location.href='/books/${sent.bookId}'"` : '';
+                    const cursorStyle = sent.bookId ? 'cursor: pointer;' : '';
+                    const bookTitleHtml = sent.bookTitle ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;"><span style="color: var(--primary-color);">[${sent.bookTitle}]</span> 에 쓴 문장</div>` : '';
+
+                    const html = `
+                        <div class="card" ${clickAction} style="padding: 15px; margin-bottom: 10px; border-left: 3px solid var(--secondary-color); ${cursorStyle}">
+                            ${bookTitleHtml}
+                            <p style="margin: 0 0 5px 0; font-size: 1rem;">${sent.content}</p>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+                                <span>${new Date(sent.createdAt).toLocaleString()}</span>
+                                <div>
+                                    <span style="margin-right: 10px;">👍 ${sent.likeCount}</span>
+                                    <span>👎 ${sent.dislikeCount}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.append(html);
+                });
+                renderPagination(pageData);
+            }
+
+            function renderCommentsList(pageData) {
+                const list = pageData.content;
+                const container = $('#list-container');
+                container.empty();
+
+                if (!list || list.length === 0) {
+                    container.html('<p style="text-align:center; color: var(--text-muted); padding: 20px;">작성한 댓글이 없습니다.</p>');
+                    return;
+                }
+
+                list.forEach(c => {
+                    const html = `
+                        <div class="card" onclick="location.href='/books/${c.bookId}'" style="cursor: pointer; padding: 15px; margin-bottom: 10px; border-left: 3px solid var(--accent-color);">
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">
+                                <span style="color: var(--primary-color);">[${c.bookTitle || '소설'}]</span> 에 남긴 댓글
+                            </div>
+                            <p style="margin: 0 0 5px 0;">${c.content}</p>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">
+                                ${new Date(c.createdAt).toLocaleString()}
+                            </div>
+                        </div>
+                    `;
+                    container.append(html);
+                });
+                renderPagination(pageData);
+            }
+
+            function renderPagination(data) {
+                const $p = $('#pagination');
+                $p.empty();
+
+                if (data.totalPages <= 1) return;
+
+                const prevDisabled = data.first ? 'disabled' : '';
+                const nextDisabled = data.last ? 'disabled' : '';
+
+                $p.append(`<button class="btn btn-outline" ${prevDisabled} onclick="loadList(${data.page - 1})" style="padding: 5px 15px;">이전</button>`);
+                $p.append(`<span style="align-self: center; color: var(--text-muted); font-size: 0.9rem;">${data.page + 1} / ${data.totalPages}</span>`);
+                $p.append(`<button class="btn btn-outline" ${nextDisabled} onclick="loadList(${data.page + 1})" style="padding: 5px 15px;">다음</button>`);
+            }
 
             function withdraw() {
-                if (confirm('정말로 탈퇴하시겠습니까? 탈퇴 후에도 작성한 소설과 문장은 유지됩니다.')) {
+                openConfirmModal('정말로 탈퇴하시겠습니까? 탈퇴 후에도 작성한 소설과 문장은 유지됩니다.', () => {
+                    const url = (memberLinks['withdraw']) ? memberLinks['withdraw'].href : '/api/auth/withdraw';
+
                     $.ajax({
-                        url: '/api/auth/withdraw',
+                        url: url,
                         method: 'DELETE',
                         success: function () {
-                            showToast('탈퇴 처리되었습니다. 이용해 주셔서 감사합니다.', 'info');
+                            showToast('탈퇴 처리되었습니다.', 'info');
                             localStorage.clear();
-                            updateAuthUI(); // Update UI immediately
-                            setTimeout(() => {
-                                window.location.href = '/';
-                            }, 1500);
+                            setTimeout(() => { window.location.href = '/'; }, 1500);
                         },
                         error: function (xhr) {
-                            if (xhr.status === 401) return;
                             showToast('탈퇴 처리에 실패했습니다.', 'error');
                         }
                     });
-                }
+                });
             }
         </script>
     </th:block>

@@ -31,6 +31,7 @@ public enum ErrorCode {
     ALREADY_COMPLETED(HttpStatus.BAD_REQUEST, "B002", "이미 완결된 소설입니다."),
     CONSECUTIVE_WRITING_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "B003", "연속해서 글을 쓸 수 없습니다."),
     SEQUENCE_MISMATCH(HttpStatus.BAD_REQUEST, "B004", "문장 순서가 일치하지 않습니다."),
+    NOT_BOOK_OWNER(HttpStatus.FORBIDDEN, "B005", "소설 작성자만 수행할 수 있습니다."),
 
     // Member (김태형 Member Domain)
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "M001", "이미 존재하는 이메일입니다."),

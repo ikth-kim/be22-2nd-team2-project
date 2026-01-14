@@ -6,6 +6,8 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.hateoas.RepresentationModel;
+
 /**
  * 소설 뷰어용 상세 DTO (문장 목록 포함)
  *
@@ -14,7 +16,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class BookDetailDto {
+public class BookDetailDto extends RepresentationModel<BookDetailDto> {
     // 기본 정보
     private Long bookId;
     private Long writerId;
@@ -24,6 +26,7 @@ public class BookDetailDto {
     private String status;
     private Integer currentSequence;
     private Integer maxSequence;
+    private Long lastWriterUserId;
     private LocalDateTime createdAt;
 
     // 문장 목록
@@ -32,4 +35,5 @@ public class BookDetailDto {
     // 투표 통계
     private Integer likeCount; // 좋아요 수
     private Integer dislikeCount; // 싫어요 수
+    private String myVote; // 내 투표 상태 (LIKE/DISLIKE/null)
 }

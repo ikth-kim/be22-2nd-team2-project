@@ -8,7 +8,10 @@
     <link rel="stylesheet" href="/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <!-- JQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="/js/realtime-updates.js"></script>
 </head>
 
@@ -130,6 +133,19 @@
         </div>
     </div>
 
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal text-center" style="max-width: 400px; padding: 25px;">
+            <h3 class="mb-4" style="margin-top: 0; font-size: 1.3rem;">알림</h3>
+            <p id="confirm-message"
+                style="margin-bottom: 30px; color: var(--text-muted); line-height: 1.5; font-size: 1rem;"></p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button id="confirm-cancel-btn" class="btn btn-outline" style="flex: 1;">취소</button>
+                <button id="confirm-ok-btn" class="btn btn-primary" style="flex: 1;">확인</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
@@ -172,6 +188,25 @@
             $('.validation-message').text('');
         }
 
+        let confirmCallback = null;
+
+        function openConfirmModal(message, onConfirm) {
+            $('#confirm-message').text(message);
+            confirmCallback = onConfirm;
+            openModal('confirm-modal');
+        }
+
+        $('#confirm-cancel-btn').on('click', function () {
+            closeModal('confirm-modal');
+            confirmCallback = null;
+        });
+
+        $('#confirm-ok-btn').on('click', function () {
+            if (confirmCallback) confirmCallback();
+            closeModal('confirm-modal');
+            confirmCallback = null;
+        });
+
         function switchModal(fromId, toId) {
             // Check if the current modal is forced
             const isForced = $(`#${fromId}`).data('force');
@@ -209,6 +244,52 @@
                 $('#user-menu').hide();
             }
         }
+
+        /**
+         * Require Authentication - Page Level Protection
+         * @param {Object} options - Configuration options
+         * @param {boolean} options.redirect - Whether to redirect to home after showing modal (default: true)
+         * @param {string} options.message - Custom toast message (default: '로그인이 필요한 페이지입니다.')
+         * @param {boolean} options.force - Force login modal (prevent closing) (default: true)
+         * @returns {boolean} - Returns true if authenticated, false otherwise
+         */
+        window.requireAuth = function (options = {}) {
+            const defaults = {
+                redirect: true,
+                message: '로그인이 필요한 페이지입니다.',
+                force: true
+            };
+            const config = { ...defaults, ...options };
+
+            const token = localStorage.getItem('accessToken');
+            if (!token) {
+                if (!window.isAuthToastShown) {
+                    showToast(config.message, 'error');
+                    window.isAuthToastShown = true;
+                    setTimeout(() => window.isAuthToastShown = false, 3000);
+                }
+
+                openModal('login-modal', config.force);
+
+                if (config.redirect) {
+                    // Redirect after a short delay to allow modal to show
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                }
+
+                return false;
+            }
+            return true;
+        };
+
+        /**
+         * Check if user is authenticated (without showing modal)
+         * @returns {boolean} - Returns true if authenticated, false otherwise
+         */
+        window.isAuthenticated = function () {
+            return !!localStorage.getItem('accessToken');
+        };
 
         // --- Real-time Validation Logic ---
         function validateEmail(email) {
@@ -286,7 +367,8 @@
             });
 
             // Real-time Email Validation (Signup)
-            $('#signup-email').on('focusout', function () { // API call on focusout to reduce load
+            let emailCheckTimeout;
+            $('#signup-email').on('input', function () {
                 const email = $(this).val();
                 const $msg = $('#signup-email-msg');
 
@@ -300,55 +382,70 @@
                     return;
                 }
 
-                // Server-side Check
-                $.ajax({
-                    url: '/api/auth/check-email',
-                    method: 'GET',
-                    data: { email: email },
-                    success: function () {
-                        $msg.text('사용 가능한 이메일입니다.').removeClass('invalid').addClass('valid');
-                    },
-                    error: function (xhr) {
-                        if (xhr.status === 0 || xhr.statusText === 'abort') return; // Ignore cancelled requests
+                // Debounce API call
+                clearTimeout(emailCheckTimeout);
+                emailCheckTimeout = setTimeout(() => {
+                    $.ajax({
+                        url: '/api/auth/check-email',
+                        method: 'GET',
+                        data: { email: email },
+                        success: function () {
+                            $msg.text('사용 가능한 이메일입니다.').removeClass('invalid').addClass('valid');
+                        },
+                        error: function (xhr) {
+                            if (xhr.status === 0 || xhr.statusText === 'abort') return;
 
-                        if (xhr.status === 409) { // Conflict
-                            $msg.text('이미 사용 중인 이메일입니다.').removeClass('valid').addClass('invalid');
-                        } else if (xhr.responseJSON && xhr.responseJSON.message) {
-                            $msg.text(xhr.responseJSON.message).removeClass('valid').addClass('invalid');
-                        } else {
-                            $msg.text('일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.').removeClass('valid').addClass('invalid');
+                            if (xhr.status === 409) {
+                                $msg.text('이미 사용 중인 이메일입니다.').removeClass('valid').addClass('invalid');
+                            } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                                $msg.text(xhr.responseJSON.message).removeClass('valid').addClass('invalid');
+                            } else {
+                                $msg.text('일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.').removeClass('valid').addClass('invalid');
+                            }
                         }
-                    }
-                });
+                    });
+                }, 500); // 500ms debounce
             });
 
-            // Real-time Nickname Validation (Signup) - NEW
-            $('#signup-nickname').on('focusout', function () {
+            // Real-time Nickname Validation (Signup)
+            let nicknameCheckTimeout;
+            $('#signup-nickname').on('input', function () {
                 const nick = $(this).val();
-                const $msg = $('#signup-nickname-msg'); // Need to add this span in HTML if not exists
+                const $msg = $('#signup-nickname-msg');
 
-                if (!nick) return;
+                if (!nick) {
+                    $msg.text('');
+                    return;
+                }
 
-                $.ajax({
-                    url: '/api/auth/check-nickname',
-                    method: 'GET',
-                    data: { nickname: nick },
-                    success: function () {
-                        $msg.text('사용 가능한 닉네임입니다.').removeClass('invalid').addClass('valid');
-                    },
-                    error: function (xhr) {
-                        if (xhr.status === 0 || xhr.statusText === 'abort') return;
+                if (nick.length < 2 || nick.length > 10) {
+                    $msg.text('닉네임은 2~10자로 입력해주세요.').removeClass('valid').addClass('invalid');
+                    return;
+                }
 
-                        if (xhr.status === 409) {
-                            $msg.text('이미 사용 중인 닉네임입니다.').removeClass('valid').addClass('invalid');
-                            $('#signup-nickname').addClass('is-invalid');
-                        } else if (xhr.responseJSON && xhr.responseJSON.message) {
-                            $msg.text(xhr.responseJSON.message).removeClass('valid').addClass('invalid');
-                        } else {
-                            $msg.text('닉네임 확인 중 일시적인 오류가 발생했습니다.').removeClass('valid').addClass('invalid');
+                // Debounce API call
+                clearTimeout(nicknameCheckTimeout);
+                nicknameCheckTimeout = setTimeout(() => {
+                    $.ajax({
+                        url: '/api/auth/check-nickname',
+                        method: 'GET',
+                        data: { nickname: nick },
+                        success: function () {
+                            $msg.text('사용 가능한 닉네임입니다.').removeClass('invalid').addClass('valid');
+                        },
+                        error: function (xhr) {
+                            if (xhr.status === 0 || xhr.statusText === 'abort') return;
+
+                            if (xhr.status === 409) {
+                                $msg.text('이미 사용 중인 닉네임입니다.').removeClass('valid').addClass('invalid');
+                            } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                                $msg.text(xhr.responseJSON.message).removeClass('valid').addClass('invalid');
+                            } else {
+                                $msg.text('닉네임 확인 중 일시적인 오류가 발생했습니다.').removeClass('valid').addClass('invalid');
+                            }
                         }
-                    }
-                });
+                    });
+                }, 500); // 500ms debounce
             });
 
             // Real-time Password Validation

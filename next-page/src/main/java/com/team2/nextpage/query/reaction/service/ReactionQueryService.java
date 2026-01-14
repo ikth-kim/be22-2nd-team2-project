@@ -1,6 +1,7 @@
 package com.team2.nextpage.query.reaction.service;
 
 import com.team2.nextpage.query.reaction.dto.response.CommentDto;
+import com.team2.nextpage.query.reaction.dto.response.CommentPageResponse;
 import com.team2.nextpage.query.reaction.mapper.ReactionMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,5 +54,16 @@ public class ReactionQueryService {
 
     // 4. 최상위 댓글만 반환 (자식은 children 필드에 포함됨)
     return roots;
+  }
+
+  /**
+   * 특정 사용자가 쓴 댓글 목록 조회 (페이징)
+   */
+  public CommentPageResponse getCommentsByUser(Long userId, int page, int size) {
+    int offset = page * size;
+    List<CommentDto> comments = reactionMapper.findCommentsByWriterId(userId, offset, size);
+    Long totalElements = reactionMapper.countCommentsByWriterId(userId);
+
+    return new CommentPageResponse(comments, page, size, totalElements);
   }
 }

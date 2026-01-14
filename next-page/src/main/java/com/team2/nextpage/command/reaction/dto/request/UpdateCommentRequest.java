@@ -2,9 +2,10 @@ package com.team2.nextpage.command.reaction.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
 
 /**
  * 댓글 수정 요청 DTO
@@ -13,6 +14,8 @@ import lombok.NoArgsConstructor;
  */
 @Getter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class UpdateCommentRequest {
 
   @NotBlank(message = "수정할 내용을 입력해주세요.")

@@ -3,6 +3,7 @@ package com.team2.nextpage.websocket.dto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * 입력 상태 메시지 DTO
@@ -10,6 +11,7 @@ import lombok.NoArgsConstructor;
  * @author 정진호
  */
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class TypingStatus {

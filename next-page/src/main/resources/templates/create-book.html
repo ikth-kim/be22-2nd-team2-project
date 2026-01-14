@@ -44,6 +44,18 @@
     <th:block layout:fragment="script">
         <script>
             $(document).ready(function () {
+                // Initial Auth Check
+                if (!isAuthenticated()) {
+                    requireAuth({
+                        message: '로그인이 필요한 페이지입니다.',
+                        redirect: true,
+                        force: true
+                    });
+                    // Hide content to prevent flashing or interaction
+                    $('.card').hide();
+                    return;
+                }
+
                 // Load categories
                 $.ajax({
                     url: '/api/categories',

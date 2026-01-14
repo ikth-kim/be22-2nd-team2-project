@@ -5,6 +5,7 @@ import com.team2.nextpage.query.book.dto.response.BookDetailDto;
 import com.team2.nextpage.query.book.dto.response.BookDto;
 import com.team2.nextpage.query.book.dto.response.BookPageResponse;
 import com.team2.nextpage.query.book.dto.response.SentenceDto;
+import com.team2.nextpage.query.book.dto.response.SentencePageResponse;
 import com.team2.nextpage.query.book.mapper.BookMapper;
 import com.team2.nextpage.common.error.BusinessException;
 import com.team2.nextpage.common.error.ErrorCode;
@@ -75,14 +76,16 @@ public class BookQueryService {
      * @throws BusinessException 소설을 찾을 수 없는 경우
      */
     public BookDetailDto getBookForViewer(Long bookId) {
+        Long userId = com.team2.nextpage.common.util.SecurityUtil.getCurrentUserId();
+
         // 1. 소설 기본 정보 조회
-        BookDetailDto book = bookMapper.findBookForViewer(bookId);
+        BookDetailDto book = bookMapper.findBookForViewer(bookId, userId);
         if (book == null) {
             throw new BusinessException(ErrorCode.ENTITY_NOT_FOUND);
         }
 
         // 2. 문장 목록 조회
-        List<SentenceDto> sentences = bookMapper.findSentencesByBookId(bookId);
+        List<SentenceDto> sentences = bookMapper.findSentencesByBookId(bookId, userId);
         book.setSentences(sentences);
 
         // 3. 투표 통계 조회
@@ -90,5 +93,16 @@ public class BookQueryService {
         book.setDislikeCount(bookMapper.countDislikes(bookId));
 
         return book;
+    }
+
+    /**
+     * 특정 사용자가 작성한 문장 목록 조회 (페이징)
+     */
+    public SentencePageResponse getSentencesByUser(Long userId, int page, int size) {
+        int offset = page * size;
+        List<SentenceDto> sentences = bookMapper.findSentencesByWriterId(userId, offset, size);
+        Long totalElements = bookMapper.countSentencesByWriterId(userId);
+
+        return new SentencePageResponse(sentences, page, size, totalElements);
     }
 }

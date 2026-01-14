@@ -28,10 +28,16 @@ public class Sentence extends BaseEntity {
     @Column(name = "writer_id")
     private Long writerId;
 
+    @Column(name = "sequence_no")
+    private Integer sequenceNo;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "book_id")
     private Book book;
 
     private String content;
-    private Integer sequenceNo;
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
 }

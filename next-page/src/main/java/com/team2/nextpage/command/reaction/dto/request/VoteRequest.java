@@ -3,6 +3,8 @@ package com.team2.nextpage.command.reaction.dto.request;
 import com.team2.nextpage.command.reaction.entity.VoteType;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -13,6 +15,8 @@ import lombok.NoArgsConstructor;
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 public class VoteRequest {
 
   private Long bookId; // 소설 투표 시 사용
