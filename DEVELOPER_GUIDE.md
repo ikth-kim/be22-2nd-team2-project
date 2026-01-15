@@ -254,62 +254,63 @@ resilience4j:
 
 ```mermaid
 erDiagram
-    %% Member Service Database
+    %% Member Service
     users {
-        BIGINT user_id PK "사용자 ID"
-        VARCHAR email "이메일(ID)"
-        VARCHAR nickname "닉네임"
-    }
-    refresh_token {
-        VARCHAR email PK
-        VARCHAR token
+        BIGINT user_id PK
+        VARCHAR email
+        VARCHAR nickname
     }
 
-    %% Story Service Database
+    %% Story Service
     books {
-        BIGINT book_id PK "소설 ID"
-        BIGINT writer_id "작성자(User) ID"
-        VARCHAR title "제목"
+        BIGINT book_id PK
+        BIGINT writer_id
+        VARCHAR title
     }
     sentences {
-        BIGINT sentence_id PK "문장 ID"
-        BIGINT book_id FK "소설 ID"
-        BIGINT writer_id "작성자(User) ID"
-        TEXT content "내용"
+        BIGINT sentence_id PK
+        BIGINT book_id FK
+        BIGINT writer_id
+        TEXT content
     }
     categories {
-        VARCHAR category_id PK "장르 코드"
-        VARCHAR category_nm "장르명"
+        VARCHAR category_id PK
+        VARCHAR category_nm
     }
 
-    %% Reaction Service Database
+    %% Reaction Service
     comments {
-        BIGINT comment_id PK "댓글 ID"
-        BIGINT book_id "소설 ID"
-        BIGINT writer_id "작성자 ID"
-        TEXT content "내용"
-        BIGINT parent_id FK "대댓글 부모 ID"
+        BIGINT comment_id PK
+        BIGINT book_id
+        BIGINT writer_id
+        TEXT content
     }
     book_votes {
         BIGINT vote_id PK
-        BIGINT book_id "소설 ID"
-        BIGINT voter_id "투표자 ID"
+        BIGINT book_id
+        BIGINT voter_id
     }
     sentence_votes {
         BIGINT vote_id PK
-        BIGINT sentence_id "문장 ID"
-        BIGINT voter_id "투표자 ID"
+        BIGINT sentence_id
+        BIGINT voter_id
     }
 
+    %% Physical Relationships (Within Domain)
     books ||--|{ sentences : "contains"
     categories ||--o{ books : "categorizes"
     comments ||--o{ comments : "replies"
     
     %% Logical Links (Cross-Service)
-    users ||..o{ books : "creates (Logical)"
-    users ||..o{ sentences : "writes (Logical)"
-    users ||..o{ comments : "writes (Logical)"
-    books ||..o{ comments : "has (Logical)"
+    users ||..o{ books : "logically creates"
+    users ||..o{ sentences : "logically writes"
+    users ||..o{ comments : "logically writes"
+    users ||..o{ book_votes : "logically votes"
+    users ||..o{ sentence_votes : "logically votes"
+    
+    books ||..o{ comments : "logically has"
+    books ||..o{ book_votes : "logically has"
+    sentences ||..o{ sentence_votes : "logically has"
 ```
 
 ---

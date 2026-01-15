@@ -24,6 +24,7 @@
 5. [요구사항](#part-1-5-요구사항-정의서)
 6. [ERD 설계](#part-1-6-erd-설계)
 7. [Database Schema](#part-1-7-database-schema)
+8. [팀 그라운드 룰 (XP)](#part-1-8-팀-그라운드-룰-xp)
 
 ### PART 2: AS-IS (Monolithic)
 
@@ -367,16 +368,27 @@ erDiagram
         BIGINT book_id
         BIGINT voter_id
     }
+    sentence_votes {
+        BIGINT vote_id PK
+        BIGINT sentence_id
+        BIGINT voter_id
+    }
 
+    %% Physical Relationships (Within Domain)
     books ||--|{ sentences : "contains"
     categories ||--o{ books : "categorizes"
     comments ||--o{ comments : "replies"
     
-    %% Logical Links
+    %% Logical Links (Cross-Service)
     users ||..o{ books : "logically creates"
     users ||..o{ sentences : "logically writes"
     users ||..o{ comments : "logically writes"
+    users ||..o{ book_votes : "logically votes"
+    users ||..o{ sentence_votes : "logically votes"
+    
     books ||..o{ comments : "logically has"
+    books ||..o{ book_votes : "logically has"
+    sentences ||..o{ sentence_votes : "logically has"
 ```
 
 <br>
@@ -395,6 +407,20 @@ erDiagram
 | **Story Service** | `next_page_story` | `books`, `sentences`, `categories` |
 | **Reaction Service** | `next_page_reaction` | `comments`, `book_votes`, `sentence_votes` |
 
+---
+
+## PART 1-8. 팀 그라운드 룰 (XP)
+
+우리 팀은 **Extreme Programming (XP)** 의 가치를 지향하며, 효율적이고 건강한 협업 문화를 만들기 위해 노력합니다.
+
+[👉 팀 그라운드 룰 상세 보기 (GROUND_RULES.md)](GROUND_RULES.md)
+
+- **의사소통:** 상시 공유와 구체적인 질문
+- **단순성:** 가독성 좋은 코드와 명확한 설계
+- **피드백:** 상호 존중 기반의 코드 리뷰
+- **용기:** 문제 공유 및 적극적인 개선 제안
+- **존중:** 사람 중심이 아닌 기술 중심의 논의
+
 <br>
 
 ---
@@ -412,7 +438,7 @@ erDiagram
 ```mermaid
 graph TD
     Client[Client Browser]
-    App[Spring Boot Application<br/>(8080)]
+    App["Spring Boot Application<br/>(8080)"]
     DB[(MariaDB: next_page)]
 
     Client --> App
@@ -530,35 +556,117 @@ graph TD
 
 ## PART 3-4. MSA 시퀀스 다이어그램
 
-대표적인 비즈니스 로직인 **"문장 이어쓰기"** 의 처리 흐름입니다.
+시스템의 핵심 흐름(Key Flows)을 보여주는 시퀀스 다이어그램입니다.
+
+### 1. 인증 프로세스 & JWT 필터 (Authentication Flow)
+
+사용자가 로그인하여 토큰을 발급받는 과정입니다.
 
 ```mermaid
 sequenceDiagram
+    autonumber
     actor User
-    participant Gateway
-    participant StoryService
-    participant DB_Story
-    participant WebSocket
+    participant Gateway as API Gateway
+    participant Auth as Member Service
+    participant DB as Member DB
 
-    Note over User, Gateway: JWT Token Header Required
+    User->>Gateway: POST /api/auth/login <br/> {email, password}
+    Gateway->>Auth: Route Request
+    
+    activate Auth
+    Auth->>DB: Find User by Email
+    DB-->>Auth: Return User Entity
+    
+    Auth->>Auth: Verify Password (BCrypt)
+    Auth->>Auth: Generate Access Code & Refresh Token
+    
+    Auth-->>Gateway: Return TokenResponse
+    deactivate Auth
+    
+    Gateway-->>User: 200 OK <br/> (Body: AccessToken, Cookie: RefreshToken)
+```
+
+### 2. 핵심 로직: 문장 이어쓰기 (Core Feature with Filter)
+
+**Gateway Filter**가 헤더를 변환하고, **Story Service**가 동시성을 제어하며, **WebSocket**이 실시간 전파하는 전체 흐름입니다.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Gateway as API Gateway
+    participant Filter as JWT Filter
+    participant Story as Story Service
+    participant DB as Story DB
+    participant Socket as WebSocket Broker
+
+    Note over User, Gateway: Header: Authorization Bearer {Token}
 
     User->>Gateway: POST /api/books/{id}/sentences
-    Gateway->>Gateway: Verify JWT & Parse UserID
-    Gateway->>StoryService: Route Request (Header: X-User-Id)
     
-    activate StoryService
-    StoryService->>DB_Story: Transaction Start
-    StoryService->>DB_Story: Check Book Check & Sequence Lock
-    StoryService->>DB_Story: INSERT sentences
-    StoryService->>DB_Story: UPDATE books (current_sequence++)
-    StoryService->>DB_Story: Transaction Commit
-    
-    StoryService->>WebSocket: Publish Event (/topic/books/{id})
-    StoryService-->>Gateway: Return Success (201 Created)
-    deactivate StoryService
+    rect rgb(240, 240, 240)
+        Note right of Gateway: Gateway Processing
+        Gateway->>Filter: Intercept Request
+        Filter->>Filter: 1. Validate Token Signature
+        Filter->>Filter: 2. Parse Claims (UserId, Email)
+        Filter->>Gateway: 3. Add Headers (X-User-Id, X-User-Email)
+    end
 
-    Gateway-->>User: 201 Created
-    WebSocket-->>User: Real-time Update (Push New Sentence)
+    Gateway->>Story: Route Request (with X-Headers)
+    
+    activate Story
+    Story->>DB: SELECT * FROM books WHERE id=? <br/> (Pessimistic Lock / @Version)
+    DB-->>Story: Return Book + Lock
+    
+    Story->>Story: Validate Sequence (Current vs Request)
+    Story->>Story: Check Previous Writer (Duplicate Prevention)
+
+    Story->>DB: INSERT into sentences
+    Story->>DB: UPDATE books SET current_seq++
+    
+    par Async Notification
+        Story->>Socket: Send Message (/topic/books/{id})
+        Socket-->>User: Push Notification (New Sentence)
+    and Response
+        Story-->>Gateway: 201 Created
+        Gateway-->>User: 201 Created
+    end
+    deactivate Story
+```
+
+### 3. MSA 통신: 데이터 통합 조회 (Cross-Service Aggregation)
+
+소설 조회 시 **Feign Client**를 통해 타 서비스(Member)의 데이터를 조회하고 병합하는 과정입니다.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Gateway
+    participant Story as Story Service
+    participant Member as Member Service (Feign)
+    
+    User->>Gateway: GET /api/books/{id} (Viewer)
+    Gateway->>Story: Route Request
+    
+    activate Story
+    Story->>Story: Fetch Book Data (WriterId=100)
+    
+    rect rgb(240, 248, 255)
+        Note right of Story: Cross-Service Communication
+        Story->>Member: GET /internal/members/100
+        activate Member
+        Member-->>Story: Return {nickname: "Hong", ...}
+        deactivate Member
+        
+        Note right of Story: Fallback if Member fails (Circuit Breaker)
+    end
+    
+    Story->>Story: Aggregate Data (Book + Writer Nickname)
+    Story-->>Gateway: Return BookDetailDto
+    deactivate Story
+    
+    Gateway-->>User: 200 OK (JSON)
 ```
 
 ---
