@@ -58,6 +58,7 @@ Content-Type: {{contentType}}
 POST {{gatewayUrl}}/api/auth/refresh
 
 ### 1-6. 내 정보 조회 (My Page)
+# [참고] Gateway와 Member Service에서 각각 요청을 처리하므로 로그가 2번 발생할 수 있습니다 (정상 동작).
 GET {{gatewayUrl}}/api/members/me
 Authorization: Bearer {{accessToken}}
 
@@ -93,10 +94,35 @@ GET {{gatewayUrl}}/api/books?page=0&size=10&sort=createdAt,desc
 ### 2-4. 소설 상세 조회 (Book Detail)
 GET {{gatewayUrl}}/api/books/{{bookId}}
 
-### 2-5. 문장 이어쓰기 (Append Sentence)
+### 2-4-1. [User 2] 문장 작성을 위한 두 번째 유저 가입 & 로그인
+# 본인 소설에는 문장을 연속해서 쓸 수 없으므로, 두 번째 유저 생성
+POST {{gatewayUrl}}/api/auth/signup
+Content-Type: {{contentType}}
+
+{
+  "userEmail": "writer2@example.com",
+  "userPw": "test1234!",
+  "userNicknm": "이어쓰기작가"
+}
+
+### 2-4-2. [User 2] 로그인
+POST {{gatewayUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "userEmail": "writer2@example.com",
+  "userPw": "test1234!"
+}
+
+> {%
+  client.global.set("accessToken2", response.body.data.accessToken);
+  client.log("✅ 이어쓰기 작가(User 2) 토큰 발급 완료");
+%}
+
+### 2-5. 문장 이어쓰기 (User 2 Append Sentence)
 # @name appendSentence
 POST {{gatewayUrl}}/api/books/{{bookId}}/sentences
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{accessToken2}}
 Content-Type: {{contentType}}
 
 {
@@ -106,6 +132,10 @@ Content-Type: {{contentType}}
 > {%
   client.global.set("sentenceId", response.body.data);
 %}
+
+### 2-5-1. [User 2] 로그아웃
+# 다음 테스트를 위해 이어쓰기 작가 로그아웃
+POST {{gatewayUrl}}/api/auth/logout
 
 ### 2-6. 내가 쓴 문장 조회
 GET {{gatewayUrl}}/api/books/mysentences
@@ -121,6 +151,8 @@ Content-Type: {{contentType}}
 }
 
 ### 2-8. 문장 수정 (Update Sentence)
+# 주의: User 2가 작성한 문장이지만, User 1(Owner)이 수정 가능한지 혹은 User 2로 재로그인 필요한지 확인 필요.
+# 현재 시나리오상 User 1(Owner) 토큰 사용
 PATCH {{gatewayUrl}}/api/books/{{bookId}}/sentences/{{sentenceId}}
 Authorization: Bearer {{accessToken}}
 Content-Type: {{contentType}}
@@ -177,6 +209,8 @@ Content-Type: {{contentType}}
   });
 %}
 
+###
+
 # 3-4-2. 싫어요 (변경)
 POST {{gatewayUrl}}/api/reactions/votes/books
 Authorization: Bearer {{accessToken}}
@@ -186,6 +220,8 @@ Content-Type: {{contentType}}
   "bookId": {{bookId}},
   "voteType": "DISLIKE"
 }
+
+###
 
 # 3-4-3. 싫어요 (취소)
 POST {{gatewayUrl}}/api/reactions/votes/books
@@ -238,40 +274,105 @@ Authorization: Bearer {{accessToken}}
 
 
 ### ===================================================================
-### 4️⃣ 관리자 기능 및 정리 (Admin & Cleanup)
+### 4️⃣ 관리자 승인 프로세스 (Admin Approval Flow)
+### 프로세스: 가입 신청(Pending) -> 로그인 시도(실패) -> 승인(By Super Admin) -> 로그인(성공)
 ### ===================================================================
 
-### 4-1. 문장 삭제 (Delete Sentence)
-DELETE {{gatewayUrl}}/api/books/{{bookId}}/sentences/{{sentenceId}}
-Authorization: Bearer {{accessToken}}
-
-### 4-2. 소설 완결 (Manual Complete) - maxSequence 도달 전 강제 완결
-POST {{gatewayUrl}}/api/books/{{bookId}}/complete
-Authorization: Bearer {{accessToken}}
-
-### 4-3. 소설 삭제 (Delete Book)
-DELETE {{gatewayUrl}}/api/books/{{bookId}}
-Authorization: Bearer {{accessToken}}
-
-### 4-4. 관리자 회원가입
+### 4-1. 신규 관리자 가입 신청 (Admin Signup)
+# 예상 결과: 200 OK ("관리자 가입 신청 성공 (승인 대기)")
 POST {{gatewayUrl}}/api/auth/admin
 Content-Type: {{contentType}}
 
 {
-  "userEmail": "admin_sys@nextpage.com",
+  "userEmail": "new_admin@nextpage.com",
   "userPw": "admin1234!",
-  "userNicknm": "통합관리자"
+  "userNicknm": "신규관리자"
 }
 
-### 4-5. 관리자 로그인
+> {%
+  client.test("Admin Signup Pending", function() {
+    client.assert(response.status === 200, "Status code should be 200");
+  });
+%}
+
+### 4-2. 승인 전 로그인 시도 (Login Attempt - Should Fail)
+# 예상 결과: 403 Forbidden (ACCOUNT_APPROVAL_PENDING Error Code: A005)
 POST {{gatewayUrl}}/api/auth/login
 Content-Type: {{contentType}}
 
 {
-  "userEmail": "admin_sys@nextpage.com",
+  "userEmail": "new_admin@nextpage.com",
   "userPw": "admin1234!"
 }
 
-### 4-6. 회원 탈퇴 (Self Withdraw)
+> {%
+  client.test("Login Failed (Pending)", function() {
+    client.assert(response.status === 403, "Should return 403 Forbidden");
+    client.assert(response.body.error.code === "A005", "Error code should be A005");
+  });
+%}
+
+### 4-3. 기존 관리자(Super Admin) 로그인
+# DB 초기화 스크립트에 포함된 기본 관리자 계정 (admin@nextpage.com)
+# @name superAdminLogin
+POST {{gatewayUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "userEmail": "admin@nextpage.com",
+  "userPw": "password123"
+}
+
+> {%
+  client.global.set("adminToken", response.body.data.accessToken);
+  client.log("🗝️ 슈퍼 관리자 토큰 발급 완료");
+%}
+
+### 4-4. 신규 관리자 승인 (Approve Admin)
+# 4-1에서 생성된 신규 관리자의 ID를 알아야 합니다.
+# (실제 테스트 시에는 DB에서 ID를 확인하거나, 가입 응답에 ID가 포함되도록 API 수정 필요. 여기서는 예시 ID 사용)
+PATCH {{gatewayUrl}}/api/auth/admin/approve/5
+Authorization: Bearer {{adminToken}}
+
+### 4-4-1. [Super Admin] 로그아웃
+POST {{gatewayUrl}}/api/auth/logout
+
+### 4-5. 승인 후 로그인 재시도 (Login Attempt - Should Success)
+# 예상 결과: 200 OK
+POST {{gatewayUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "userEmail": "new_admin@nextpage.com",
+  "userPw": "admin1234!"
+}
+
+> {%
+  client.test("Login Success (Approved)", function() {
+    client.assert(response.status === 200, "Should return 200 OK");
+  });
+%}
+
+### ===================================================================
+### 5️⃣ 관리자 및 작성자 기능 (Content Management)
+### ===================================================================
+
+### 5-1. 문장 삭제 (Delete Sentence)
+DELETE {{gatewayUrl}}/api/books/{{bookId}}/sentences/{{sentenceId}}
+Authorization: Bearer {{accessToken}}
+
+### 5-2. 소설 완결 (Manual Complete) - maxSequence 도달 전 강제 완결
+POST {{gatewayUrl}}/api/books/{{bookId}}/complete
+Authorization: Bearer {{accessToken}}
+
+### 5-3. 소설 삭제 (Delete Book)
+DELETE {{gatewayUrl}}/api/books/{{bookId}}
+Authorization: Bearer {{accessToken}}
+
+### ===================================================================
+### 6️⃣ 데이터 정리 (Cleanup)
+### ===================================================================
+
+### 6-1. 테스트 계정 탈퇴
 DELETE {{gatewayUrl}}/api/auth/withdraw
 Authorization: Bearer {{accessToken}}

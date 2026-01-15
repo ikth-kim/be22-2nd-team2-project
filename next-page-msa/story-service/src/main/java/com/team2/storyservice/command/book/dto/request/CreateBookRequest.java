@@ -9,27 +9,27 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * ?뚯꽕 ?앹꽦 ?붿껌 DTO
+ * 소설 생성 요청 DTO
  *
- * @author ?뺤쭊??
+ * @author 정진호
  */
 @Getter
 @NoArgsConstructor
 public class CreateBookRequest {
 
-    @NotBlank(message = "?쒕ぉ? ?꾩닔 ?낅젰媛믪엯?덈떎.")
-    @Size(min = 1, max = 200, message = "?쒕ぉ? 1???댁긽 200???댄븯?ъ빞 ?⑸땲??")
+    @NotBlank(message = "제목은 필수 입력값입니다.")
+    @Size(min = 1, max = 200, message = "제목은 1자 이상 200자 이하여야 합니다.")
     private String title;
 
-    @NotBlank(message = "移댄뀒怨좊━???꾩닔 ?낅젰媛믪엯?덈떎.")
+    @NotBlank(message = "카테고리는 필수 입력값입니다.")
     private String categoryId;
 
-    @NotNull(message = "理쒕? 臾몄옣 ?섎뒗 ?꾩닔 ?낅젰媛믪엯?덈떎.")
-    @Min(value = 10, message = "理쒕? 臾몄옣 ?섎뒗 10 ?댁긽?댁뼱???⑸땲??")
-    @Max(value = 100, message = "理쒕? 臾몄옣 ?섎뒗 100 ?댄븯?ъ빞 ?⑸땲??")
+    @NotNull(message = "최대 문장 수는 필수 입력값입니다.")
+    @Min(value = 10, message = "최대 문장 수는 10 이상이어야 합니다.")
+    @Max(value = 100, message = "최대 문장 수는 100 이하여야 합니다.")
     private Integer maxSequence;
 
-    @NotBlank(message = "泥?臾몄옣? ?꾩닔 ?낅젰媛믪엯?덈떎.")
-    @Size(min = 1, max = 200, message = "泥?臾몄옣? 1???댁긽 200???댄븯?ъ빞 ?⑸땲??")
+    @NotBlank(message = "첫 문장은 필수 입력값입니다.")
+    @Size(min = 1, max = 200, message = "첫 문장은 1자 이상 200자 이하여야 합니다.")
     private String firstSentence;
 }

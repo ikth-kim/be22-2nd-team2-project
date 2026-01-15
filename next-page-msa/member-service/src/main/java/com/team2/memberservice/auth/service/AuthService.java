@@ -1,10 +1,13 @@
 package com.team2.memberservice.auth.service;
 
+import com.team2.commonmodule.error.BusinessException;
+import com.team2.commonmodule.error.ErrorCode;
 import com.team2.memberservice.auth.dto.LoginRequest;
 import com.team2.memberservice.auth.dto.TokenResponse;
 import com.team2.memberservice.auth.entity.RefreshToken;
 import com.team2.memberservice.auth.repository.AuthRepository;
 import com.team2.memberservice.command.member.entity.Member;
+import com.team2.memberservice.command.member.entity.UserStatus;
 import com.team2.memberservice.command.member.repository.MemberRepository;
 import com.team2.memberservice.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -13,13 +16,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 
 /**
  * 인증(Auth) 서비스
@@ -53,6 +54,10 @@ public class AuthService {
     // 1. 사용자 조회
     Member member = memberRepository.findByUserEmail(loginRequest.getUserEmail())
         .orElseThrow(() -> new BadCredentialsException("아이디 또는 비밀번호가 일치하지 않습니다."));
+
+    if (member.getUserStatus() == UserStatus.PENDING) {
+      throw new BusinessException(ErrorCode.ACCOUNT_APPROVAL_PENDING);
+    }
 
     // 2. 비밀번호 검증
     if (!passwordEncoder.matches(loginRequest.getUserPw(), member.getUserPw())) {

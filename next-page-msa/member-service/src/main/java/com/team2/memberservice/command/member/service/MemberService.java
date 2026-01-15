@@ -62,10 +62,27 @@ public class MemberService {
         .userPw(passwordEncoder.encode(memberCreateRequest.getUserPw()))
         .userNicknm(memberCreateRequest.getUserNicknm())
         .userRole(UserRole.ADMIN)
-        .userStatus(UserStatus.ACTIVE)
+        .userStatus(UserStatus.PENDING)
         .build();
 
     memberRepository.save(member);
+  }
+
+  /**
+   * 관리자 승인
+   * 대기 상태(PENDING)인 관리자를 승인(ACTIVE) 처리합니다.
+   *
+   * @param userId 승인할 회원의 ID
+   */
+  public void approveAdmin(Long userId) {
+    if (!SecurityUtil.isAdmin()) {
+      throw new BusinessException(ErrorCode.ACCESS_DENIED);
+    }
+
+    Member member = memberRepository.findById(userId)
+        .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+    member.approve();
   }
 
   /**

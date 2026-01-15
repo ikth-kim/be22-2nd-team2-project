@@ -28,6 +28,7 @@ public enum ErrorCode {
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "A002", "만료된 토큰입니다."),
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "A003", "로그인이 필요합니다."),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A004", "유효하지 않은 토큰입니다."),
+    ACCOUNT_APPROVAL_PENDING(HttpStatus.FORBIDDEN, "A005", "관리자 승인 대기 중인 계정입니다."),
 
     // Book & Story (story-service)
     NOT_YOUR_TURN(HttpStatus.BAD_REQUEST, "B001", "아직 당신의 순서가 아닙니다."),

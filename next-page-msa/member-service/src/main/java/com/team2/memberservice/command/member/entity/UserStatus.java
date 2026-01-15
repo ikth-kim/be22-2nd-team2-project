@@ -8,5 +8,6 @@ package com.team2.memberservice.command.member.entity;
  */
 public enum UserStatus {
     ACTIVE,
-    DELETED
+    DELETED,
+    PENDING
 }

@@ -5,31 +5,31 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * ?뚯꽕 寃???붿껌 DTO (?섏씠吏? ?뺣젹, ?꾪꽣留?
+ * 소설 검색 요청 DTO (페이지, 정렬, 필터링)
  *
- * @author ?뺤쭊??
+ * @author 정진호
  */
 @Getter
 @Setter
 @NoArgsConstructor
 public class BookSearchRequest {
 
-    // ?섏씠吏?
-    private Integer page = 0; // ?섏씠吏 踰덊샇 (0遺???쒖옉)
-    private Integer size = 10; // ?섏씠吏 ?ш린
+    // 페이지
+    private Integer page = 0; // 페이지 번호 (0부터 시작)
+    private Integer size = 10; // 페이지 크기
 
-    // ?뺣젹
-    private String sortBy = "createdAt"; // ?뺣젹 湲곗? (createdAt, title)
-    private String sortOrder = "DESC"; // ?뺣젹 諛⑺뼢 (ASC, DESC)
+    // 정렬
+    private String sortBy = "createdAt"; // 정렬 기준 (createdAt, title)
+    private String sortOrder = "DESC"; // 정렬 방향 (ASC, DESC)
 
-    // ?꾪꽣留?
-    private String status; // ?곹깭 ?꾪꽣 (WRITING, COMPLETED)
-    private String categoryId; // 移댄뀒怨좊━ ?꾪꽣
-    private String keyword; // ?쒕ぉ 寃???ㅼ썙??
-    private Long writerId; // ?묒꽦??ID ?꾪꽣
+    // 필터링
+    private String status; // 상태 필터 (WRITING, COMPLETED)
+    private String categoryId; // 카테고리 필터
+    private String keyword; // 제목 검색 키워드
+    private Long writerId; // 작성자 ID 필터
 
     /**
-     * ?섏씠吏 ?ㅽ봽??怨꾩궛
+     * 페이지 오프셋 계산
      */
     public Integer getOffset() {
         return page * size;

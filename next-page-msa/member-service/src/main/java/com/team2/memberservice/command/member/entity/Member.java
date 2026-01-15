@@ -61,4 +61,8 @@ public class Member extends BaseEntity {
   public void modifyRole(String roleName) {
     this.userRole = UserRole.valueOf(roleName);
   }
+
+  public void approve() {
+    this.userStatus = UserStatus.ACTIVE;
+  }
 }

@@ -6,16 +6,16 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 臾몄옣 ?댁뼱?곌린 ?붿껌 DTO
- * 由대젅???뚯꽕??臾몄옣??異붽??????ъ슜?⑸땲??
+ * 문장 이어쓰기 요청 DTO
+ * 릴레이 소설에 문장을 추가할 때 사용합니다.
  *
- * @author ?뺤쭊??
+ * @author 정진호
  */
 @Getter
 @NoArgsConstructor
 public class SentenceAppendRequest {
 
-    @NotBlank(message = "?댁슜? ?꾩닔?낅땲??")
-    @Size(min = 1, max = 200, message = "臾몄옣? 1???댁긽 200???댄븯?ъ빞 ?⑸땲??")
+    @NotBlank(message = "내용은 필수입니다.")
+    @Size(min = 1, max = 200, message = "문장은 1자 이상 200자 이하여야 합니다.")
     private String content;
 }

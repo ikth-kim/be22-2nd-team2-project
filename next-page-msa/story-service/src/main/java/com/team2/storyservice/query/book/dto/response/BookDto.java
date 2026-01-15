@@ -8,9 +8,9 @@ import java.time.LocalDateTime;
 import org.springframework.hateoas.RepresentationModel;
 
 /**
- * ?뚯꽕 議고쉶??DTO
+ * 소설 조회용 DTO
  *
- * @author ?뺤쭊??
+ * @author 정진호
  */
 @Getter
 @Setter

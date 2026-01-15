@@ -4,15 +4,14 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-
 /**
- * UpdateBookRequest
+ * 소설 수정 요청 DTO
  *
  * @author 정진호
  */
 @Getter
 @NoArgsConstructor
 public class UpdateBookRequest {
-    @NotBlank(message = "?쒕ぉ? ?꾩닔?낅땲??")
+    @NotBlank(message = "제목은 필수입니다.")
     private String title;
 }

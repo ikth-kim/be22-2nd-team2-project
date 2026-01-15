@@ -6,21 +6,21 @@ import lombok.Setter;
 import java.util.List;
 
 /**
- * ?뚯꽕 紐⑸줉 ?섏씠吏??묐떟 DTO
+ * 소설 목록 페이지 응답 DTO
  *
- * @author ?뺤쭊??
+ * @author 정진호
  */
 @Getter
 @Setter
 @NoArgsConstructor
 public class BookPageResponse {
-    private List<BookDto> content; // ?뚯꽕 紐⑸줉
-    private Integer page; // ?꾩옱 ?섏씠吏 踰덊샇
-    private Integer size; // ?섏씠吏 ?ш린
-    private Long totalElements; // ?꾩껜 ?붿냼 ??
-    private Integer totalPages; // ?꾩껜 ?섏씠吏 ??
-    private Boolean hasNext; // ?ㅼ쓬 ?섏씠吏 議댁옱 ?щ?
-    private Boolean hasPrevious; // ?댁쟾 ?섏씠吏 議댁옱 ?щ?
+    private List<BookDto> content; // 소설 목록
+    private Integer page; // 현재 페이지 번호
+    private Integer size; // 페이지 크기
+    private Long totalElements; // 전체 요소 수
+    private Integer totalPages; // 전체 페이지 수
+    private Boolean hasNext; // 다음 페이지 존재 여부
+    private Boolean hasPrevious; // 이전 페이지 존재 여부
 
     public BookPageResponse(List<BookDto> content, Integer page, Integer size, Long totalElements) {
         this.content = content;

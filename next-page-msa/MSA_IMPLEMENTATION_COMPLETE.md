@@ -28,6 +28,7 @@
 | **UI/UX** | Frontend Polish | ✅ 완료 | 로고 폰트(Gaegu), 모달 UX, 503 에러 해결 |
 | **문서화** | JavaDoc 추가 | ✅ 완료 | 모든 Java 파일에 작성자 정보 포함 |
 | **문서화** | Swagger 개선 | ✅ 완료 | 전체 API @Operation, @Schema 적용 |
+| **보안** | 관리자 승인제 | ✅ 완료 | PENDING 상태 및 승인 워크플로우 구현 |
 | **테스트** | 단위 테스트 | ✅ 완료 | Service Layer JUnit + Mockito |
 
 ---

@@ -103,7 +103,11 @@ public class MemberController {
    * @return 성공 메시지
    */
   @Operation(summary = "관리자 계정 생성", description = """
-      새로운 관리자 계정을 생성합니다.
+      새로운 관리자 계정을 신청합니다.
+
+      **승인 프로세스**:
+      - 신청 직후 상태는 `PENDING` (승인 대기)입니다.
+      - 기존 관리자(Super Admin)가 승인(`approve`)해야 로그인이 가능합니다.
 
       **관리자 권한**:
       - 모든 댓글 삭제 가능
@@ -111,16 +115,14 @@ public class MemberController {
       - 연속 문장 작성 가능 (일반 사용자는 불가)
 
       **주의사항**:
-      - 이 API는 개발/테스트 목적으로만 사용해야 합니다
-      - 운영 환경에서는 별도의 관리자 승인 프로세스 필요
       - 일반 사용자와 동일한 검증 규칙 적용
-      """, security = {} // 인증 불필요 (개발용)
+      """, security = {} // 인증 불필요
   )
   @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "관리자 계정 생성 성공", content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "관리자 계정 생성 신청 성공", content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
           {
             "success": true,
-            "data": "관리자 가입 성공",
+            "data": "관리자 가입 신청 성공 (승인 대기)",
             "error": null
           }
           """))),
@@ -139,7 +141,59 @@ public class MemberController {
   public ResponseEntity<ApiResponse<String>> signupAdmin(
       @Parameter(description = "관리자 계정 생성 요청 정보", required = true, schema = @Schema(implementation = SignUpRequest.class)) @RequestBody @Valid SignUpRequest memberCreateRequest) {
     memberService.registAdmin(memberCreateRequest);
-    return ResponseEntity.ok(ApiResponse.success("관리자 가입 성공"));
+    return ResponseEntity.ok(ApiResponse.success("관리자 가입 신청 성공 (승인 대기)"));
+  }
+
+  /**
+   * 관리자 승인 (기존 관리자 전용)
+   *
+   * @param userId 승인할 관리자 ID
+   * @return 성공 메시지
+   */
+  @Operation(summary = "관리자 계정 승인", description = """
+      승인 대기(PENDING) 상태인 관리자 계정을 활성화(ACTIVE)합니다.
+
+      **권한**:
+      - 기존 관리자(ADMIN) 권한 필요
+
+      **처리 내용**:
+      - 대상 계정의 상태를 `PENDING` -> `ACTIVE`로 변경
+      - 승인 즉시 대상 계정으로 로그인 가능
+      """, security = @SecurityRequirement(name = "bearerAuth"))
+  @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "관리자 승인 완료", content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+          {
+            "success": true,
+            "data": "관리자 승인 완료",
+            "error": null
+          }
+          """))),
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음 (관리자 아님)", content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+          {
+            "success": false,
+            "data": null,
+            "error": {
+              "code": "ACCESS_DENIED",
+              "message": "접근 권한이 없습니다."
+            }
+          }
+          """))),
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음", content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+          {
+            "success": false,
+            "data": null,
+            "error": {
+              "code": "MEMBER_NOT_FOUND",
+              "message": "회원 정보를 찾을 수 없습니다."
+            }
+          }
+          """)))
+  })
+  @PatchMapping("/admin/approve/{userId}")
+  public ResponseEntity<ApiResponse<String>> approveAdmin(
+      @Parameter(description = "승인할 관리자 ID", required = true) @PathVariable Long userId) {
+    memberService.approveAdmin(userId);
+    return ResponseEntity.ok(ApiResponse.success("관리자 승인 완료"));
   }
 
   /**

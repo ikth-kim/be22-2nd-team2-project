@@ -65,15 +65,15 @@ watch(() => props.message, () => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 24px;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  padding: 16px 28px;
+  border-radius: 50px;
+  box-shadow: 0 10px 40px rgba(232, 93, 117, 0.2);
   backdrop-filter: blur(10px);
   z-index: 10000;
   max-width: 90%;
   min-width: 280px;
-  font-family: 'Pretendard', -apple-system, sans-serif;
-  font-weight: 500;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 700;
 }
 
 .toast-icon {
@@ -94,10 +94,11 @@ watch(() => props.message, () => {
   flex: 1;
 }
 
-/* Success */
+/* Success - Use site's secondary color (purple) */
 .toast-success {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+  background: linear-gradient(135deg, rgba(132, 94, 247, 0.95), rgba(151, 117, 250, 0.95));
   color: white;
+  border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .toast-success .toast-icon {
@@ -105,10 +106,11 @@ watch(() => props.message, () => {
   color: white;
 }
 
-/* Error */
+/* Error - Use site's primary color (pink) */
 .toast-error {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
+  background: linear-gradient(135deg, rgba(232, 93, 117, 0.95), rgba(255, 107, 157, 0.95));
   color: white;
+  border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .toast-error .toast-icon {
@@ -116,26 +118,28 @@ watch(() => props.message, () => {
   color: white;
 }
 
-/* Warning */
+/* Warning - Warm peach tone matching site */
 .toast-warning {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.95), rgba(245, 158, 11, 0.95));
-  color: white;
+  background: linear-gradient(135deg, rgba(255, 180, 200, 0.95), rgba(255, 150, 170, 0.95));
+  color: #6D3D49;
+  border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 .toast-warning .toast-icon {
-  background: rgba(255, 255, 255, 0.25);
-  color: white;
+  background: rgba(255, 255, 255, 0.4);
+  color: #6D3D49;
 }
 
-/* Info */
+/* Info - Soft lavender matching site */
 .toast-info {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(37, 99, 235, 0.95));
-  color: white;
+  background: linear-gradient(135deg, rgba(200, 180, 255, 0.95), rgba(180, 160, 240, 0.95));
+  color: #4A3F6B;
+  border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 .toast-info .toast-icon {
-  background: rgba(255, 255, 255, 0.25);
-  color: white;
+  background: rgba(255, 255, 255, 0.4);
+  color: #4A3F6B;
 }
 
 /* Animations */

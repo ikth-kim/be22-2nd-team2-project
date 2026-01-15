@@ -61,7 +61,7 @@ export const useAuthStore = defineStore('auth', {
             const autoLoginEnabled = localStorage.getItem('autoLoginEnabled') === 'true'
             const refreshToken = localStorage.getItem('refreshToken')
 
-            if (autoLoginEnabled && refreshToken && !this.accessToken) {
+            if (autoLoginEnabled && (refreshToken || !this.accessToken)) {
                 try {
                     const response = await axios.post('/auth/refresh', {}, {
                         headers: { 'Cookie': `refreshToken=${refreshToken}` } // Note: Browsers might not let you set Cookie header manually in JS, standard is HttpOnly cookies sent automatically. 

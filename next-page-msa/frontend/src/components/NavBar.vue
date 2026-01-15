@@ -72,4 +72,20 @@ header {
   font-weight: 700;
   color: var(--primary-color);
 }
+
+.router-link-active {
+    font-weight: 700;
+    color: var(--primary-color) !important;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: var(--text-color);
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.nav-links a:hover {
+  color: var(--primary-color);
+}
 </style>
