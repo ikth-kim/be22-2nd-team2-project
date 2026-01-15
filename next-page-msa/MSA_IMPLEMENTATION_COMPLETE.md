@@ -21,6 +21,7 @@
 | **서비스** | reaction-service 이관 | ✅ 완료 | 양방향 Feign 통합 |
 | **통신** | Feign Client 구현 | ✅ 완료 | MemberServiceClient, StoryServiceClient |
 | **안정성** | Circuit Breaker 적용 | ✅ 완료 | Resilience4j, Fallback 처리 |
+| **안정성** | **Load Balancing** | ✅ 완료 | **Spring Cloud LoadBalancer**, Client-Side 자동 분산 |
 | **빌드** | 전체 MSA 빌드 | ✅ 성공 | 43 tasks, 21초 |
 | **기능** | WebSocket (실시간) | ✅ 완료 | story-service 기동 |
 | **UI/UX** | Frontend Polish | ✅ 완료 | 로고 폰트(Gaegu), 모달 UX, 503 에러 해결 |

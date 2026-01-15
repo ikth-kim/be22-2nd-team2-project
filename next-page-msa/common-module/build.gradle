@@ -13,6 +13,9 @@ dependencies {
 
     // Spring Cloud OpenFeign (MSA 통신)
     api 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    
+    // Spring Cloud LoadBalancer (Feign용)
+    api 'org.springframework.cloud:spring-cloud-starter-loadbalancer'
 
     // ModelMapper (DTO 변환)
     api 'org.modelmapper:modelmapper:3.2.0'

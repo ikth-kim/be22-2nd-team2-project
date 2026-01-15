@@ -71,6 +71,7 @@
 
 - [x] Circuit Breaker (Resilience4j) 적용
 - [x] Fallback 메서드 구현
+- [x] **Client-Side Load Balancing (Spring Cloud LoadBalancer) 적용**
 
 ### 8. Frontend UI/UX Polish ✅
 

@@ -53,6 +53,13 @@ MSA는 서비스들이 파편화되어 있기 때문에, 이들을 관리해줄 
     *   **라우팅(Routing):** `/api/books`로 들어오면 `Story Service`로, `/api/auth`로 들어오면 `Member Service`로 토스합니다.
     *   **필터링(Filtering):** 들어오는 요청을 가로채서 **JWT 인증**을 수행합니다. "신분증 안 가져왔어? 돌아가!"
 
+### 2-4. Service Load Balancing (트래픽 분산)
+*   **문제:** `Story Service`에 사용자가 너무 몰려서 서버를 하나 더 띄웠습니다(Scale-out). 그럼 게이트웨이나 다른 서비스는 이 두 개의 서버 중 어디로 요청을 보내야 할까요?
+*   **해결:** **Client-Side Load Balancing** 방식을 사용합니다. (Spring Cloud LoadBalancer)
+    1.  **Eureka 연동:** 게이트웨이와 모든 서비스는 Eureka로부터 "현재 살아있는 서버 명단"을 주기적으로 받아옵니다.
+    2.  **자동 분산:** 요청을 보낼 때마다 명단에 있는 서버들에게 번갈아가며(Round Robin 등) 요청을 보냅니다.
+    3.  **장점:** 값비싼 하드웨어 로드밸런서(L4/L7 스위치) 없이도 소프트웨어만으로 똑똑하게 트래픽을 분산할 수 있습니다.
+
 ---
 
 ## 💎 3. 백엔드 핵심 기술 (Core Tech Stack)
