@@ -108,68 +108,63 @@ MSA 환경에 맞춰 **Database per Service** 패턴이 적용된 구조입니�
 
 ```mermaid
 erDiagram
-    %% Member Service Database
+    %% Member Service
     users {
-        BIGINT user_id PK "사용자 ID"
-        VARCHAR email "이메일(ID)"
-        VARCHAR nickname "닉네임"
-        VARCHAR status "ACTIVE/DELETED"
-    }
-    refresh_token {
-        VARCHAR email PK
-        VARCHAR token
+        BIGINT user_id PK
+        VARCHAR email
+        VARCHAR nickname
     }
 
-    %% Story Service Database
+    %% Story Service
     books {
-        BIGINT book_id PK "소설 ID"
-        BIGINT writer_id "작성자(User) ID"
-        VARCHAR title "제목"
-        INT current_seq "현재 순서"
+        BIGINT book_id PK
+        BIGINT writer_id
+        VARCHAR title
     }
     sentences {
-        BIGINT sentence_id PK "문장 ID"
-        BIGINT book_id FK "소설 ID"
-        BIGINT writer_id "작성자(User) ID"
-        TEXT content "내용"
-        INT sequence_no "순서"
+        BIGINT sentence_id PK
+        BIGINT book_id FK
+        BIGINT writer_id
+        TEXT content
     }
     categories {
-        VARCHAR category_id PK "장르 코드"
-        VARCHAR category_nm "장르명"
+        VARCHAR category_id PK
+        VARCHAR category_nm
     }
 
-    %% Reaction Service Database
+    %% Reaction Service
     comments {
-        BIGINT comment_id PK "댓글 ID"
-        BIGINT book_id "소설 ID"
-        BIGINT writer_id "작성자 ID"
-        TEXT content "내용"
-        BIGINT parent_id FK "대댓글 부모 ID"
+        BIGINT comment_id PK
+        BIGINT book_id
+        BIGINT writer_id
+        TEXT content
     }
     book_votes {
         BIGINT vote_id PK
-        BIGINT book_id "소설 ID"
-        BIGINT voter_id "투표자 ID"
+        BIGINT book_id
+        BIGINT voter_id
     }
     sentence_votes {
         BIGINT vote_id PK
-        BIGINT sentence_id "문장 ID"
-        BIGINT voter_id "투표자 ID"
+        BIGINT sentence_id
+        BIGINT voter_id
     }
 
-    %% Relationships
+    %% Physical Relationships (Within Domain)
     books ||--|{ sentences : "contains"
     categories ||--o{ books : "categorizes"
     comments ||--o{ comments : "replies"
     
     %% Logical Links (Cross-Service)
-    users ||..o{ books : "creates (Logical)"
-    users ||..o{ sentences : "writes (Logical)"
-    users ||..o{ comments : "writes (Logical)"
-    books ||..o{ comments : "has (Logical)"
-    books ||..o{ book_votes : "voted (Logical)"
-    sentences ||..o{ sentence_votes : "voted (Logical)"
+    users ||..o{ books : "logically creates"
+    users ||..o{ sentences : "logically writes"
+    users ||..o{ comments : "logically writes"
+    users ||..o{ book_votes : "logically votes"
+    users ||..o{ sentence_votes : "logically votes"
+    
+    books ||..o{ comments : "logically has"
+    books ||..o{ book_votes : "logically has"
+    sentences ||..o{ sentence_votes : "logically has"
 ```
 
 ---
@@ -318,8 +313,9 @@ cd gateway-server && ./gradlew bootRun       # Port 8000
 ## 📚 관련 문서
 
 - **[MSA 전환 완료 보고서](MSA_IMPLEMENTATION_COMPLETE.md):** 전환 과정 및 변경 사항 상세
-- **[MSA 구축 현황판](MSA_SETUP_STATUS.md):** 콤포넌트별 구현 상태
+
 - **[통합 개발자 가이드](../DEVELOPER_GUIDE.md):** 아키텍처 및 코딩 컨벤션
+- **[팀 그라운드 룰 (XP)](../GROUND_RULES.md):** 협업 규칙 및 XP 핵심 가치
 - **[API 명세서](API_SPECIFICATION.md):** REST API 상세 스펙
 
 ---

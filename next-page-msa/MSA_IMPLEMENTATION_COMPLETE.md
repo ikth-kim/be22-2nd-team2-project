@@ -1,14 +1,14 @@
-# 🎯 MSA 전환 완료 상태 문서
+# 🎯 MSA 전환 완료 상태 문서 (MSA Implementation Status)
 
-> **Last Updated:** 2026-01-15  
-> **Status:** ✅ 전체 MSA 전환 완료 (Production Ready)  
+> **Last Updated:** 2026-01-15
+> **Status:** ✅ 전체 MSA 전환 완료 (Production Ready)
 > **특징:** 빌드 완료, 설정 중앙 관리(Config Server), 안정성(Circuit Breaker), 모든 JavaDoc 문서화 완료
 
 ---
 
-## 📊 전환 완료 현황
+## 📊 전환 완료 현황 (Summary)
 
-### ✅ 완료된 작업
+### ✅ 완료된 작업 요약
 
 | 카테고리 | 작업 | 상태 | 비고 |
 |---------|------|------|------|
@@ -22,13 +22,49 @@
 | **서비스** | reaction-service 이관 | ✅ 완료 | 양방향 Feign 통합 |
 | **통신** | Feign Client 구현 | ✅ 완료 | MemberServiceClient, StoryServiceClient |
 | **안정성** | Circuit Breaker 적용 | ✅ 완료 | Resilience4j, Fallback 처리 |
-| **안정성** | **Load Balancing** | ✅ 완료 | **Spring Cloud LoadBalancer**, Client-Side 자동 분산 |
+| **안정성** | Load Balancing | ✅ 완료 | Spring Cloud LoadBalancer |
 | **빌드** | 전체 MSA 빌드 | ✅ 성공 | 43 tasks, 21초 |
 | **기능** | WebSocket (실시간) | ✅ 완료 | story-service 기동 |
 | **UI/UX** | Frontend Polish | ✅ 완료 | 로고 폰트(Gaegu), 모달 UX, 503 에러 해결 |
 | **문서화** | JavaDoc 추가 | ✅ 완료 | 모든 Java 파일에 작성자 정보 포함 |
 | **문서화** | Swagger 개선 | ✅ 완료 | 전체 API @Operation, @Schema 적용 |
 | **테스트** | 단위 테스트 | ✅ 완료 | Service Layer JUnit + Mockito |
+
+---
+
+## 📝 상세 구현 체크리스트 (Implementation Details)
+
+### 1. 데이터베이스 분리
+- [x] **Schema Scripts**:
+  - `01-create-databases.sql`: DB 생성 및 계정 설정
+  - `02-member-service-schema.sql`: Member 스키마
+  - `03-story-service-schema.sql`: Story 스키마
+  - `04-reaction-service-schema.sql`: Reaction 스키마
+- [x] 샘플 데이터 포함
+- [x] 상세 가이드 작성 (`database-scripts/README.md`)
+
+### 2. Common Module (공통 라이브러리)
+- [x] **Core Classes**:
+  - `BaseEntity.java` (JPA Auditing)
+  - `ErrorCode.java` (MSA 확장)
+  - `BusinessException.java` (Custom Exception)
+  - `ApiResponse.java` (Standard Format)
+- [x] **Utils**:
+  - `GlobalExceptionHandler.java`
+  - `SecurityUtil.java` (Gateway 헤더 기반 인증 처리)
+- [x] **Dependencies**: Resilience4j, Spring Cloud 추가
+
+### 3. Services Implementation
+- [x] **Member Service**: `auth` 패키지, JWT 로직, Internal API 구현
+- [x] **Story Service**: `book`/`query` 패키지 이관, Writer ID 참조 변경, Feign Client 구현
+- [x] **Reaction Service**: `reaction` 패키지 이관, 양방향 의존성 해결 (Feign)
+- [x] **Gateway Server**: `JwtAuthenticationFilter` (토큰 검증), Route 설정
+
+### 4. Stability & Testing
+- [x] **Circuit Breaker**: Resilience4j 적용 (Failure Rate Threshold 50%)
+- [x] **Fallback**: 외부 서비스 장애 시 기본값 반환 처리
+- [x] **Load Balancing**: Spring Cloud LoadBalancer (Client-Side)
+- [x] **Testing**: JUnit + Mockito 단위 테스트, HTTP Client 테스트 파일 작성
 
 ---
 
@@ -45,12 +81,24 @@
 | **Story Service** | 8082 | 소설 및 문장 관리 (WebSocket) |
 | **Reaction Service** | 8083 | 댓글 및 투표 관리 |
 
-### 2. 권장 실행 순서 (Execution Order)
+### 2. 권장 실행 순서
 
 1. **Config Server** (기동 완료 후 5~10초 대기)
 2. **Discovery Server** (기동 완료 후 Eureka 대시보드 확인)
 3. **Domain Services** (Member → Story → Reaction 순서 권장)
 4. **Gateway Server** (최종 진입점)
+
+---
+
+## 🔧 빌드 및 실행 명령어 (Build Commands)
+
+```bash
+# 전체 빌드 (테스트 제외)
+./gradlew clean build -x test
+
+# 전체 실행 (병렬)
+./gradlew bootRun --parallel
+```
 
 ---
 
@@ -95,28 +143,13 @@ graph TD
     Gateway -.-> Config
 ```
 
-### 서비스 간 의존성
-
-```
-member-service (독립)
-     ↑
-     │ (Feign + CB)
-     │
-story-service ────┐
-     ↑            │
-     │ (Feign+CB) │ (Feign+CB)
-     │            │
-reaction-service ─┘
-```
-
 ---
 
 ## 🔄 Monolithic → MSA 전환 핵심 변경사항
 
-### 1. **JPA 관계 제거 → ID 참조 전환**
+### 1. JPA 관계 제거 → ID 참조 전환 (Logic Reference)
 
 #### Before (Monolithic)
-
 ```java
 // ❌ 객체 참조 (Cross-DB JOIN 불가)
 @Entity
@@ -124,188 +157,38 @@ public class Book {
     @ManyToOne
     @JoinColumn(name = "writer_id")
     private Member writer;  // JPA 객체 참조
-
-    public String getWriterNickname() {
-        return writer.getUserNicknm();
-    }
 }
 ```
 
 #### After (MSA)
-
 ```java
 // ✅ ID 참조 + Feign Client
 @Entity
 public class Book {
     @Column(name = "writer_id")
     private Long writerId;  // ID만 저장
-
-    // DTO에서 Feign Client로 닉네임 조회
-    // (Service Layer에서 처리)
 }
 ```
 
-### 2. **MyBatis JOIN 제거 → Application Level Join**
+### 2. Cross-DB JOIN 제거 → Application Level Join
 
 #### Before (Monolithic)
-
-```xml
-<!-- ❌ Cross-DB JOIN (MSA에서 불가능) -->
-<select id="findBookForViewer" resultType="BookDetailDto">
-    SELECT
-        b.book_id,
-        b.title,
-        u.user_nicknm AS writerNicknm  <!-- users 테이블 JOIN -->
-    FROM books b
-    LEFT JOIN users u ON b.writer_id = u.user_id
-    WHERE b.book_id = #{bookId}
-</select>
-```
+- MyBatis에서 `LEFT JOIN users` 직접 사용
 
 #### After (MSA)
+- **Service Layer**에서 **Feign Client**(`MemberServiceClient`)로 데이터 조회 후 조합
+- `Circuit Breaker`가 적용되어 장애 시 Fallback 처리됨
 
-```xml
-<!-- ✅ 자신의 DB만 조회 -->
-<select id="findBookForViewer" resultType="BookDetailDto">
-    SELECT
-        b.book_id,
-        b.title,
-        b.writer_id  <!-- ID만 조회 -->
-    FROM books b
-    WHERE b.book_id = #{bookId}
-</select>
-```
+### 3. N+1 문제 방지: Batch API 구현
 
-```java
-// Service Layer에서 Feign Client로 회원 정보 조회
-@Service
-public class BookQueryService {
-    private final BookMapper bookMapper;
-    private final MemberServiceClient memberServiceClient;
+- **Solution**: `getMembersBatch(List<Long> ids)` API를 구현하여 한 번의 네트워크 호출로 다건 조회
 
-    public BookDetailDto getBookForViewer(Long bookId) {
-        // 1. 자신의 DB에서 소설 정보 조회
-        BookDetailDto book = bookMapper.findBookForViewer(bookId, userId);
+### 4. SecurityUtil Header 기반 인증
 
-        // 2. Feign Client로 member-service에서 작성자 정보 조회
-        // Circuit Breaker가 적용되어 장애 시 Fallback 처리됨
-        ApiResponse<MemberInfoDto> response =
-            memberServiceClient.getMemberInfo(book.getWriterId());
-
-        // 3. DTO 병합
-        book.setWriterNicknm(response.getData().getUserNicknm());
-
-        return book;
-    }
-}
-```
-
-### 3. **N+1 문제 방지: Batch API 구현**
-
-```java
-// ✅ 일괄 조회로 성능 최적화
-public BookDetailDto getBookForViewer(Long bookId) {
-    BookDetailDto book = bookMapper.findBookForViewer(bookId, userId);
-    List<SentenceDto> sentences = bookMapper.findSentencesByBookId(bookId, userId);
-
-    // 모든 작성자 ID 수집 (중복 제거)
-    List<Long> writerIds = sentences.stream()
-        .map(SentenceDto::getWriterId)
-        .distinct()
-        .collect(Collectors.toList());
-
-    if (book.getWriterId() != null) {
-        writerIds.add(book.getWriterId());
-    }
-
-    // 한 번의 Feign 호출로 모든 회원 정보 조회
-    ApiResponse<MemberBatchInfoDto> response =
-        memberServiceClient.getMembersBatch(writerIds);
-
-    Map<Long, String> memberMap = response.getData().getMembers().stream()
-        .collect(Collectors.toMap(
-            MemberInfoDto::getUserId,
-            MemberInfoDto::getUserNicknm
-        ));
-
-    // 닉네임 매핑
-    book.setWriterNicknm(memberMap.get(book.getWriterId()));
-    sentences.forEach(s -> s.setWriterNicknm(memberMap.get(s.getWriterId())));
-
-    book.setSentences(sentences);
-    return book;
-}
-```
-
-### 4. **SecurityUtil 헤더 기반 변경**
-
-#### Before (Monolithic)
-
-```java
-// ❌ Spring Security Context 사용
-public static Long getCurrentUserId() {
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    CustomUserDetails user = (CustomUserDetails) auth.getPrincipal();
-    return user.getUserId();
-}
-```
-
-#### After (MSA)
-
-```java
-// ✅ Gateway가 주입한 HTTP 헤더 사용
-public static Long getCurrentUserId() {
-    HttpServletRequest request = getCurrentRequest();
-    String userIdHeader = request.getHeader("X-User-Id");
-    if (userIdHeader == null) {
-        throw new BusinessException(ErrorCode.UNAUTHENTICATED);
-    }
-    return Long.parseLong(userIdHeader);
-}
-```
-
-### 5. **Resilience (Circuit Breaker) 적용**
-
-```yaml
-resilience4j:
-  circuitbreaker:
-    instances:
-      memberService:
-        failureRateThreshold: 50
-        waitDurationInOpenState: 10s
-```
-
-```java
-// Fallback Method 예시
-public MemberInfoDto getMemberInfoFallback(Long userId, Exception ex) {
-    log.warn("Member service unavailable: {}", ex.getMessage());
-    return new MemberInfoDto(userId, "Unknown User", "USER");
-}
-```
+- **Before**: `SecurityContextHolder` 접속 (세션 기반)
+- **After**: Gateway가 주입한 `X-User-Id` 헤더 파싱
 
 ---
 
-## 📊 구현 완료 요약
-
-### 통계
-- **전체 서비스**: 6개 (Discovery, Config, Gateway + Member, Story, Reaction)
-- **독립 데이터베이스**: 3개 (Database per Service 패턴)
-- **Feign Client**: 양방향 통신 구현 완료
-- **WebSocket 엔드포인트**: 5개 (타이핑, 신규 소설/문장/댓글)
-- **REST API**: 50+ 엔드포인트 (내부 API 포함)
-
-### 핵심 달성 사항
-1. ✅ **완전한 서비스 분리**: 도메인별 독립적 배포 가능
-2. ✅ **장애 격리**: Circuit Breaker로 장애 전파 방지
-3. ✅ **확장성**: 각 서비스 독립적 스케일링 가능
-4. ✅ **중앙 관리**: Config Server로 설정 통합 관리
-5. ✅ **실시간 기능**: WebSocket을 통한 사용자 경험 향상
-6. ✅ **문서화**: API 명세, JavaDoc, 개발 가이드 완비
-
----
-
-**Status:** ✅ Production Ready  
-**Next Steps:** 
-- 모니터링 시스템 도입 고려 (Prometheus/Grafana, ELK Stack)
-- CI/CD 파이프라인 구축 (GitHub Actions, Jenkins)
-- 컨테이너화 (Docker, Kubernetes)
+**Completion Date:** 2026-01-15
+**Result:** Monolithic 아키텍처에서 MSA로의 전환이 성공적으로 완료됨.
