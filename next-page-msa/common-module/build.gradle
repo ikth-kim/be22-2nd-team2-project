@@ -11,6 +11,11 @@ dependencies {
     api 'org.springframework.boot:spring-boot-starter-validation'
     api 'org.springframework.boot:spring-boot-starter-data-jpa'
 
+    // Spring Security (for SecurityContextHolder, Authentication, Filters)
+    api 'org.springframework.security:spring-security-core'
+    api 'org.springframework.security:spring-security-web'
+    api 'org.springframework.security:spring-security-config'
+
     // Spring Cloud OpenFeign (MSA 통신)
     api 'org.springframework.cloud:spring-cloud-starter-openfeign'
     
@@ -29,6 +34,11 @@ dependencies {
 
     // Slf4j Logging
     api 'org.slf4j:slf4j-api'
+
+    // JWT (for token parsing in JwtToHeaderFilter)
+    api 'io.jsonwebtoken:jjwt-api:0.12.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
 
     // Documentation (Shared Swagger Config)
     api 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.15'

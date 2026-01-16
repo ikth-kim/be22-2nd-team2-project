@@ -40,7 +40,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             "/api/auth/refresh",
             "/api/auth/check-email",
             "/api/auth/check-nickname",
-            "/api/auth/admin");
+            "/api/auth/admin",
+            "/v3/api-docs",
+            "/swagger-ui",
+            "/swagger-resources",
+            "/favicon.ico",
+            "/error");
 
     private static final List<String> PUBLIC_GET_PATHS = List.of(
             "/api/books",

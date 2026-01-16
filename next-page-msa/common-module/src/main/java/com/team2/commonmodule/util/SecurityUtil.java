@@ -3,6 +3,9 @@ package com.team2.commonmodule.util;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.GrantedAuthority;
 
 /**
  * MSA 환경에서 Gateway를 통해 전달된 사용자 정보를 편리하게 가져오는 유틸리티 클래스
@@ -33,8 +36,7 @@ public class SecurityUtil {
      * @return HttpServletRequest (없으면 null)
      */
     private static HttpServletRequest getCurrentRequest() {
-        ServletRequestAttributes attributes =
-            (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         return attributes != null ? attributes.getRequest() : null;
     }
 
@@ -61,17 +63,23 @@ public class SecurityUtil {
         }
     }
 
-    /**
-     * Gateway에서 전달된 사용자 이메일을 반환합니다.
-     *
-     * @return 사용자 이메일 (헤더가 없으면 null)
-     */
     public static String getCurrentUserEmail() {
         HttpServletRequest request = getCurrentRequest();
-        if (request == null) {
-            return null;
+        if (request != null) {
+            String email = request.getHeader(HEADER_USER_EMAIL);
+            if (email != null && !email.isEmpty()) {
+                return email;
+            }
         }
-        return request.getHeader(HEADER_USER_EMAIL);
+
+        // Fallback: SecurityContextHolder (Direct Request)
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()
+                && !authentication.getName().equals("anonymousUser")) {
+            return authentication.getName();
+        }
+
+        return null;
     }
 
     /**
@@ -94,10 +102,23 @@ public class SecurityUtil {
      */
     public static String getCurrentUserRole() {
         HttpServletRequest request = getCurrentRequest();
-        if (request == null) {
-            return null;
+        if (request != null) {
+            String role = request.getHeader(HEADER_USER_ROLE);
+            if (role != null && !role.isEmpty()) {
+                return role;
+            }
         }
-        return request.getHeader(HEADER_USER_ROLE);
+
+        // Fallback: SecurityContextHolder (Direct Request)
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            return authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        return null;
     }
 
     /**

@@ -24,10 +24,13 @@
 | **안정성** | Circuit Breaker 적용 | ✅ 완료 | Resilience4j, Fallback 처리 |
 | **안정성** | Load Balancing | ✅ 완료 | Spring Cloud LoadBalancer |
 | **빌드** | 전체 MSA 빌드 | ✅ 성공 | 43 tasks, 21초 |
-| **기능** | WebSocket (실시간) | ✅ 완료 | story-service 기동 |
+| **기능** | WebSocket (실시간) | ✅ 완료 | story-service, reaction-service 기동, 7개 토픽 |
+| **기능** | 댓글 알림 (서비스 간 WebSocket) | ✅ 완료 | Reaction → Story 알림 연동 |
 | **UI/UX** | Frontend Polish | ✅ 완료 | 로고 폰트(Gaegu), 모달 UX, 503 에러 해결 |
 | **문서화** | JavaDoc 추가 | ✅ 완료 | 모든 Java 파일에 작성자 정보 포함 |
 | **문서화** | Swagger 개선 | ✅ 완료 | 전체 API @Operation, @Schema 적용 |
+| **문서화** | API 명세서 완성 | ✅ 완료 | WebSocket 토픽, Internal API, Gateway 헤더 명세 |
+| **문서화** | 기술 아키텍처 상세화 | ✅ 완료 | SecurityUtil, WebSocket 연동, 성능 최적화 |
 | **보안** | 관리자 승인제 | ✅ 완료 | PENDING 상태 및 승인 워크플로우 구현 |
 | **테스트** | 단위 테스트 | ✅ 완료 | Service Layer JUnit + Mockito |
 
@@ -191,5 +194,104 @@ public class Book {
 
 ---
 
+## 🎯 추가 발견 사항 (2026-01-16 문서화 업데이트)
+
+### 1. WebSocket 토픽 전체 목록 명세화
+
+**Story Service WebSocket** (`/ws` 엔드포인트):
+1. `/topic/typing/{bookId}` - 문장 작성 타이핑 상태
+2. `/topic/comment-typing/{bookId}` - 댓글 작성 타이핑 상태
+3. `/topic/books/new` - 새 소설 생성 알림
+4. `/topic/sentences/{bookId}` - 문장 추가 알림
+5. `/topic/comments/{bookId}` - 댓글 생성 알림 (Reaction → Story)
+6. `/topic/books/{bookId}/status` - 소설 상태 변경 (완결)
+
+**Reaction Service WebSocket** (`/ws` 엔드포인트):
+7. `/topic/books/{bookId}/votes` - 투표 업데이트
+
+### 2. InternalNotificationController 발견
+
+**위치**: `story-service/src/main/java/com/team2/storyservice/websocket/controller/InternalNotificationController.java`
+
+**API**:
+- `POST /internal/notify/comments` - Reaction Service에서 댓글 생성 시 Story Service의 WebSocket으로 알림 전송
+
+**동작 방식**:
+1. Reaction Service에서 댓글 생성
+2. StoryServiceClient.notifyCommentCreated() 호출 (Feign)
+3. InternalNotificationController가 요청 수신
+4. messagingTemplate.convertAndSend()로 WebSocket 브로드캐스트
+
+### 3. CommentNotificationDto 추가
+
+**위치**: `common-module/src/main/java/com/team2/commonmodule/feign/dto/CommentNotificationDto.java`
+
+**용도**: Reaction Service → Story Service 댓글 알림 전송 시 사용
+
+**필드**:
+- commentId (LONG)
+- bookId (LONG)
+- content (STRING)
+- nickname (STRING)
+- createdAt (DATETIME)
+
+### 4. SecurityUtil 유틸리티 클래스
+
+**위치**: `common-module/src/main/java/com/team2/commonmodule/util/SecurityUtil.java`
+
+**주요 메서드**:
+- `getCurrentUserId()` - Gateway X-User-Id 헤더에서 사용자 ID 추출
+- `getCurrentUserEmail()` - 사용자 이메일 추출
+- `getCurrentUserNickname()` - 사용자 닉네임 추출
+- `getCurrentUserRole()` - 사용자 역할 추출
+- `isAdmin()` - 관리자 여부 확인
+- `isCurrentUser(Long userId)` - 본인 여부 확인
+- `isCurrentUserOrAdmin(Long userId)` - 본인 또는 관리자 여부 확인
+
+**특징**:
+- Gateway 헤더 우선, SecurityContext fallback
+- 모든 서비스에서 통일된 인증 정보 조회
+
+### 5. Gateway 헤더 명세 표준화
+
+**Gateway에서 주입하는 HTTP 헤더**:
+- `X-User-Id`: 사용자 고유 ID (Long)
+- `X-User-Email`: 사용자 이메일
+- `X-User-Nickname`: 사용자 닉네임
+- `X-User-Role`: 사용자 권할 (USER/ADMIN)
+
+**Filter**:
+- `JwtAuthenticationFilter` (Gateway) - JWT 검증 및 헤더 주입
+- `GatewayAuthenticationFilter` (Common Module) - 헤더 기반 인증 처리
+- `JwtToHeaderFilter` (Common Module) - Swagger 직접 테스트용
+
+### 6. Resilience4j Circuit Breaker 설정
+
+**각 서비스 application.yml**:
+```yaml
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 5s
+```
+
+**적용 범위**: 모든 Feign Client 호출 (Member, Story, Reaction Service)
+
+### 7. Batch 조회 API 구현
+
+**N+1 문제 방지를 위한 Batch API**:
+- `GET /internal/members/batch?userIds=1,2,3` - 회원 정보 일괄 조회
+- `GET /internal/books/batch?bookIds=1,2,3` - 소설 정보 일괄 조회
+- `POST /internal/reactions/sentences/stats` - 문장별 투표 정보 일괄 조회
+
+**효과**: 10개 소설 조회 시 10번 → 1번의 HTTP 요청으로 감소
+
+---
+
+**Last Updated:** 2026-01-16
 **Completion Date:** 2026-01-15
-**Result:** Monolithic 아키텍처에서 MSA로의 전환이 성공적으로 완료됨.
+**Result:** Monolithic 아키텍처에서 MSA로의 전환이 성공적으로 완료되었으며, 2026-01-16 문서화 업데이트를 통해 누락된 내용이 모두 보완됨.

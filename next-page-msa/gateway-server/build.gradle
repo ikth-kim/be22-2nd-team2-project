@@ -36,4 +36,8 @@ dependencies {
     // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+
+    // Swagger UI Aggregation
+    implementation 'org.springdoc:springdoc-openapi-starter-webflux-ui:2.8.4'
 }
+

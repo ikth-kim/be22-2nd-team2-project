@@ -10,13 +10,15 @@
 - **목적:** 도메인 기반 서비스 분리를 통한 확장성, 장애 격리, 독립 배포 가능한 시스템 구축
 - **아키텍처:** Spring Cloud 기반 Microservices Architecture
 - **전환 배경:** Monolithic의 한계 극복 - 부분 장애 시 전체 시스템 다운, 확장성 제한, 배포 복잡도
-- **핵심 기술:** 
+- **핵심 기술:**
   - **Service Discovery:** Netflix Eureka (서비스 자동 등록/탐색)
   - **API Gateway:** Spring Cloud Gateway (JWT 인증, 라우팅, 헤더 주입)
   - **Configuration:** Spring Cloud Config (Git 기반 중앙 설정 관리)
-  - **Communication:** OpenFeign + Resilience4j (서비스 간 통신 및 Circuit Breaker)
+  - **Communication:** OpenFeign (서비스 간 통신, Common Module 통합)
   - **Database:** MariaDB (Database per Service 패턴, 3개 독립 DB)
+  - **Persistence:** JPA (Command) + MyBatis (Query) Hybrid 패턴
   - **Real-time:** WebSocket (STOMP) - 타이핑 인디케이터, 실시간 업데이트
+  - **Frontend:** Vue 3 + Vite (모바일 반응형 디자인 지원)
 
 ---
 
@@ -308,17 +310,139 @@ cd gateway-server && ./gradlew bootRun       # Port 8000
 - **원인:** Config Server가 먼저 기동되지 않음
 - **해결:** Config Server → Discovery Server → 도메인 서비스 순서 준수
 
+### Feign Client 호출 실패
+- **증상:** `FeignException: Service Unavailable` 또는 `Connection refused`
+- **원인1:** 호출하려는 서비스가 Eureka에 등록되지 않음
+- **원인2:** 서비스명이 잘못됨 (대소문자 구분)
+- **해결:**
+  1. Eureka Dashboard에서 서비스 등록 확인
+  2. `@FeignClient(name = "member-service")` 이름 확인 (소문자 권장)
+  3. Circuit Breaker 로그 확인
+
+### WebSocket 연결 실패
+- **증상:** `WebSocket connection failed`
+- **원인:** Story Service 또는 Reaction Service가 기동되지 않음
+- **해결:**
+  1. Story Service (포트 확인) 정상 기동 확인
+  2. CORS 설정 확인 (Gateway CorsConfig)
+  3. 브라우저 콘솔에서 WebSocket URL 확인 (`ws://localhost:{port}/ws`)
+
+### 401 Unauthorized (Gateway)
+- **증상:** 인증된 요청인데도 401 에러 발생
+- **원인:** JWT 토큰 형식 오류 또는 만료
+- **해결:**
+  1. Authorization 헤더 형식 확인: `Bearer {token}` (Bearer 뒤 공백 필수)
+  2. Access Token 만료 시 `/api/auth/refresh`로 토큰 갱신
+  3. Gateway 로그에서 JWT 검증 실패 원인 확인
+
+### 403 Forbidden
+- **증상:** 로그인했는데도 특정 API 호출 시 403 에러
+- **원인:** 권한 부족 (일반 사용자가 관리자 API 호출 등)
+- **해결:**
+  1. SecurityUtil로 현재 사용자 역할 확인
+  2. API 명세서에서 해당 엔드포인트의 권한 요구사항 확인
+  3. 본인 소유 리소스가 아닌 경우 (예: 타인의 소설 삭제) 권한 없음
+
+### N+1 문제 발생
+- **증상:** 소설 목록 조회 시 응답 속도가 매우 느림
+- **원인:** Batch API를 사용하지 않고 반복문에서 Feign Client 호출
+- **해결:**
+  1. `MemberServiceClient.getMembersBatch()` 사용
+  2. 목록 조회 시 ID를 먼저 추출하고 Batch로 한 번에 조회
+  3. MyBatis 쿼리 최적화 (인덱스 활용)
+
 ---
 
 ## 📚 관련 문서
 
+- **[API 명세서](API_SPECIFICATION.md):** REST API 및 WebSocket 상세 스펙, Internal API 포함
+- **[기술 아키텍처](TECH_ARCHITECTURE.md):** MSA 아키텍처 상세 설명, Feign Client, CQRS 패턴
 - **[MSA 전환 완료 보고서](MSA_IMPLEMENTATION_COMPLETE.md):** 전환 과정 및 변경 사항 상세
-
+- **[데이터베이스 가이드](database-scripts/README.md):** 데이터베이스 스키마 및 설치 가이드
 - **[통합 개발자 가이드](../DEVELOPER_GUIDE.md):** 아키텍처 및 코딩 컨벤션
 - **[팀 그라운드 룰 (XP)](../GROUND_RULES.md):** 협업 규칙 및 XP 핵심 가치
-- **[API 명세서](API_SPECIFICATION.md):** REST API 상세 스펙
 
 ---
 
-**Last Updated:** 2026-01-15
+## 🎯 주요 기능
+
+### 회원 관리 (Member Service)
+- **회원가입/로그인**: 일반 회원 및 관리자 계정 지원
+- **JWT 인증**: Access Token (30분) + Refresh Token (7일) 기반 Stateless 인증
+- **관리자 승인 시스템**: 관리자 계정은 기존 관리자의 승인 필요
+- **중복 검증**: 이메일, 닉네임 실시간 중복 체크
+- **마이페이지**: 내 정보 조회 및 활동 내역 확인
+
+### 소설 관리 (Story Service)
+- **릴레이 소설 생성**: 카테고리별 소설방 개설
+- **문장 이어쓰기**: 실시간 문장 추가 및 WebSocket 알림
+- **소설 뷰어**: 전체 문장 통합 조회 및 작성자 정보 표시
+- **검색 및 필터링**: 키워드, 카테고리별 소설 검색
+- **완결 처리**: 자동/수동 완결 시스템
+- **CQRS 패턴**: 쓰기(JPA), 읽기(MyBatis) 최적화
+
+### 반응 관리 (Reaction Service)
+- **댓글 시스템**: 댓글 및 대댓글 (계층 구조) 지원
+- **투표 기능**: 소설 및 문장별 좋아요/싫어요 투표
+- **집계 기능**: 투표 수 및 댓글 수 실시간 집계
+- **내 활동 조회**: 내가 작성한 댓글 목록 조회
+
+### 실시간 기능 (WebSocket)
+- **타이핑 인디케이터**: 문장/댓글 작성 중 상태 실시간 표시
+- **실시간 업데이트**: 새 문장/댓글 추가 시 자동 화면 갱신
+- **소설 생성 알림**: 메인 페이지에서 새 소설 생성 알림
+- **댓글 알림**: 댓글 작성 시 소설 페이지에 실시간 알림 (서비스 간 WebSocket 연동)
+- **투표 업데이트**: 좋아요/싫어요 투표 시 실시간 집계 결과 반영
+- **소설 완결 알림**: 소설 완결 시 실시간 상태 변경 알림
+
+**WebSocket 토픽**:
+- Story Service: `/topic/typing/{bookId}`, `/topic/comment-typing/{bookId}`, `/topic/books/new`, `/topic/sentences/{bookId}`, `/topic/comments/{bookId}`, `/topic/books/{bookId}/status`
+- Reaction Service: `/topic/books/{bookId}/votes`
+
+### 프론트엔드 (Vue 3)
+- **반응형 디자인**: 데스크탑 및 모바일 최적화
+- **SPA 라우팅**: Vue Router 기반 페이지 전환
+- **상태 관리**: Pinia를 통한 중앙 상태 관리
+- **실시간 통신**: STOMP.js를 이용한 WebSocket 연동
+
+---
+
+## 🔧 기술 스택
+
+### Backend
+- **Framework**: Spring Boot 3.2.1
+- **Cloud**: Spring Cloud 2023.0.0 (Eureka, Gateway, Config, OpenFeign)
+- **Security**: Spring Security + JWT
+- **Persistence**:
+  - JPA (Hibernate) - Command (쓰기)
+  - MyBatis - Query (읽기)
+- **Database**: MariaDB 10.6+
+- **Real-time**: Spring WebSocket (STOMP)
+- **Build Tool**: Gradle 8.5
+
+### Frontend
+- **Framework**: Vue 3.3
+- **Build Tool**: Vite 4.5
+- **State Management**: Pinia 2.1
+- **HTTP Client**: Axios 1.6
+- **WebSocket**: @stomp/stompjs 7.0, sockjs-client 1.6
+- **Router**: Vue Router 4.2
+
+### Infrastructure
+- **Service Discovery**: Netflix Eureka
+- **API Gateway**: Spring Cloud Gateway (JWT 필터, 헤더 주입)
+- **Config Server**: Spring Cloud Config (Git 기반 중앙 설정)
+- **Load Balancing**: Spring Cloud LoadBalancer (Client-Side)
+- **Circuit Breaker**: Resilience4j (장애 격리 및 Fallback)
+
+### 공통 모듈 (Common Module)
+- **Feign Clients**: 서비스 간 통신 인터페이스 중앙 관리
+- **공통 DTO**: MemberInfoDto, BookInfoDto, CommentNotificationDto 등
+- **응답 형식**: ApiResponse (통일된 API 응답 구조)
+- **예외 처리**: GlobalExceptionHandler, BusinessException
+- **유틸리티**: SecurityUtil (Gateway 헤더 기반 인증)
+
+---
+
+**Last Updated:** 2026-01-16
 **Status:** ✅ Production Ready

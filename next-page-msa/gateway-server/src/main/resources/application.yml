@@ -11,3 +11,44 @@ management:
   endpoint:
     health:
       show-details: always
+
+# Swagger & Route Configuration for Aggregation
+# (Local Override merging with Config Server)
+
+springdoc:
+  enable-native-support: true
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    config-url: /v3/api-docs/swagger-config
+    urls:
+      - name: 1. Member Service
+        url: /v3/api-docs/member
+      - name: 2. Story Service
+        url: /v3/api-docs/story
+      - name: 3. Reaction Service
+        url: /v3/api-docs/reaction
+
+
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true # Enable discovery locator to automatically create routes based on service ID
+      routes:
+        - id: member-service
+          uri: lb://MEMBER-SERVICE
+          predicates:
+            - Path=/api/members/**, /api/auth/**
+        - id: story-service
+          uri: lb://STORY-SERVICE
+          predicates:
+            - Path=/api/books/**, /api/categories/**
+        - id: reaction-service
+          uri: lb://REACTION-SERVICE
+          predicates:
+            - Path=/api/reactions/**, /api/comments/**

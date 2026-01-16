@@ -6,23 +6,17 @@ import com.team2.reactionservice.command.reaction.dto.request.VoteRequest;
 import com.team2.reactionservice.command.reaction.service.ReactionService;
 import com.team2.commonmodule.response.ApiResponse;
 import com.team2.commonmodule.util.SecurityUtil;
-import com.team2.reactionservice.websocket.dto.CommentCreatedEvent;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import com.team2.commonmodule.feign.MemberServiceClient;
 import com.team2.commonmodule.feign.dto.MemberInfoDto;
 import java.time.LocalDateTime;
+import com.team2.commonmodule.feign.StoryServiceClient;
+import lombok.RequiredArgsConstructor;
 
-/**
- * 반응(댓글/투표) Command 컨트롤러
- *
- * @author 정병진
- */
 @Tag(name = "Reaction Commands", description = "반응(댓글/투표) 관리(Command) API")
 @RestController
 @RequestMapping("/api/reactions")
@@ -30,8 +24,8 @@ import java.time.LocalDateTime;
 public class ReactionController {
 
   private final ReactionService reactionService;
-  private final SimpMessagingTemplate messagingTemplate;
   private final MemberServiceClient memberServiceClient;
+  private final StoryServiceClient storyServiceClient;
 
   /**
    * 댓글 등록 API
@@ -46,7 +40,7 @@ public class ReactionController {
       @RequestBody @Valid CreateCommentRequest request) {
     Long commentId = reactionService.addComment(request);
 
-    // 실시간 댓글 알림 전송
+    // 실시간 댓글 알림 전송 (via Story Service WebSocket)
     Long userId = SecurityUtil.getCurrentUserId();
     String nickname = "User#" + userId;
     try {
@@ -56,17 +50,23 @@ public class ReactionController {
       }
     } catch (Exception e) {
       // Fallback or log error
-      // log.warn("Failed to fetch nickname for user {}", userId);
     }
 
-    CommentCreatedEvent event = new CommentCreatedEvent(
-        commentId,
-        request.getBookId(),
-        request.getContent(),
-        nickname,
-        LocalDateTime.now());
+    com.team2.commonmodule.feign.dto.CommentNotificationDto notificationDto = com.team2.commonmodule.feign.dto.CommentNotificationDto
+        .builder()
+        .commentId(commentId)
+        .bookId(request.getBookId())
+        .content(request.getContent())
+        .nickname(nickname)
+        .createdAt(LocalDateTime.now())
+        .build();
 
-    messagingTemplate.convertAndSend("/topic/comments/" + request.getBookId(), event);
+    try {
+      storyServiceClient.notifyCommentCreated(notificationDto);
+    } catch (Exception e) {
+      // WebSocket 알림 실패가 댓글 생성 실패로 이어지면 안 됨
+      // log.error("Failed to notify story service about new comment", e);
+    }
 
     return ResponseEntity.ok(ApiResponse.success(commentId));
   }

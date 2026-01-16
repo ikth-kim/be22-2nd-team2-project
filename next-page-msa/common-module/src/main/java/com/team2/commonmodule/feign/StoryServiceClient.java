@@ -80,4 +80,14 @@ public interface StoryServiceClient {
     @GetMapping("/internal/members/{userId}/stats")
     ApiResponse<MemberStoryStatsDto> getMemberStoryStats(
             @PathVariable("userId") Long userId);
+
+    /**
+     * 댓글 생성 알림 (WebSocket Broadcast용)
+     *
+     * @param notificationDto 댓글 알림 정보
+     * @return 성공 여부
+     */
+    @org.springframework.web.bind.annotation.PostMapping("/internal/notify/comments")
+    ApiResponse<Void> notifyCommentCreated(
+            @org.springframework.web.bind.annotation.RequestBody com.team2.commonmodule.feign.dto.CommentNotificationDto notificationDto);
 }

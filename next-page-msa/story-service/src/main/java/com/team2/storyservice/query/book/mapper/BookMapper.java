@@ -9,61 +9,51 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * ?뚯꽕 Query Mapper (寃?? ?꾪꽣留? ?섏씠吏?理쒖쟻??
+ * 소설 Query Mapper (검색 필터링/페이징 최적화)
  *
- * @author ?뺤쭊??
+ * @author 정진호
  */
 @Mapper
 public interface BookMapper {
 
     /**
-     * ?뚯꽕 紐⑸줉 議고쉶 (?꾪꽣留?寃???섏씠吏?
+     * 소설 목록 조회 (필터링/검색/페이징)
      */
     List<BookDto> findBooks(@Param("request") BookSearchRequest request);
 
     /**
-     * ?뚯꽕 ?꾩껜 媛쒖닔 議고쉶 (?섏씠吏뺤슜)
+     * 소설 전체 개수 조회 (페이징용)
      */
     Long countBooks(@Param("request") BookSearchRequest request);
 
     /**
-     * ?뚯꽕 ?곸꽭 議고쉶
+     * 소설 상세 조회
      */
     BookDto findBookDetail(@Param("bookId") Long bookId);
 
     /**
-     * ?뚯꽕 ?곸꽭 議고쉶 (酉곗뼱??- ?묒꽦???됰꽕???ы븿)
+     * 소설 상세 조회 (뷰어용 - 완성된 소설만 포함)
      */
     BookDetailDto findBookForViewer(@Param("bookId") Long bookId, @Param("userId") Long userId);
 
     /**
-     * ?뚯꽕??臾몄옣 紐⑸줉 議고쉶
+     * 소설의 문장 목록 조회
      */
     List<SentenceDto> findSentencesByBookId(@Param("bookId") Long bookId, @Param("userId") Long userId);
 
     /**
-     * ?뚯꽕??醫뗭븘????議고쉶
-     */
-    Integer countLikes(@Param("bookId") Long bookId);
-
-    /**
-     * ?뚯꽕???レ뼱????議고쉶
-     */
-    Integer countDislikes(@Param("bookId") Long bookId);
-
-    /**
-     * 湲곗〈 硫붿꽌??(?섏쐞 ?명솚??
+     * 기존 메서드 (하위 호환용)
      */
     List<BookDto> findAllBooks();
 
     /**
-     * ?뱀젙 ?ъ슜?먭? ??臾몄옣 紐⑸줉 議고쉶 (?섏씠吏?
+     * 특정 사용자가 쓴 문장 목록 조회 (페이징)
      */
     List<SentenceDto> findSentencesByWriterId(@Param("writerId") Long writerId, @Param("offset") int offset,
             @Param("limit") int limit);
 
     /**
-     * ?뱀젙 ?ъ슜?먭? ??臾몄옣 ?꾩껜 媛쒖닔
+     * 특정 사용자가 쓴 문장 전체 개수
      */
     Long countSentencesByWriterId(@Param("writerId") Long writerId);
 }

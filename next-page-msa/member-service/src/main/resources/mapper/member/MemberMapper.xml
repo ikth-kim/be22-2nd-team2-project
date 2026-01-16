@@ -15,22 +15,4 @@
           AND user_status = 'ACTIVE'
     </select>
 
-    <!-- 사용자 ID로 생성한 소설 수 조회 -->
-    <!-- TODO: MSA - Story Service의 Feign Client로 대체 필요 -->
-    <select id="countCreatedBooks" resultType="int">
-        SELECT 0
-    </select>
-
-    <!-- 사용자 ID로 작성한 문장 수 조회 -->
-    <!-- TODO: MSA - Story Service의 Feign Client로 대체 필요 -->
-    <select id="countWrittenSentences" resultType="int">
-        SELECT 0
-    </select>
-
-    <!-- 사용자 ID로 작성한 댓글 수 조회 -->
-    <!-- TODO: MSA - Reaction Service의 Feign Client로 대체 필요 -->
-    <select id="countWrittenComments" resultType="int">
-        SELECT 0
-    </select>
-
 </mapper>

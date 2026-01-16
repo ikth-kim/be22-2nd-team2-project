@@ -22,50 +22,25 @@ public class TypingController {
     private final SimpMessagingTemplate messagingTemplate;
 
     /**
-     * 입력 시작 이벤트 처리
-     * 클라이언트: /app/typing/start
-     * 브로드캐스트: /topic/typing/{bookId}
+     * 입력 상태 처리 (sentences & comments)
+     * 클라이언트: /app/typing/{bookId} OR /app/comment-typing/{bookId}
+     * 브로드캐스트: /topic/typing/{bookId} OR /topic/comment-typing/{bookId}
      */
-    @MessageMapping("/typing/start")
-    public void handleTypingStart(TypingStatus status) {
-        status.setTyping(true);
-        log.debug("Typing started - Book: {}, User: {}", status.getBookId(), status.getUserNickname());
-        messagingTemplate.convertAndSend("/topic/typing/" + status.getBookId(), status);
+    @MessageMapping("/typing/{bookId}")
+    public void handleTyping(@org.springframework.messaging.handler.annotation.DestinationVariable Long bookId,
+            TypingStatus status) {
+        status.setBookId(bookId); // Path Variable에서 ID 설정
+        log.debug("Typing status - Book: {}, User: {}, Typing: {}", bookId, status.getUserNickname(),
+                status.isTyping());
+        messagingTemplate.convertAndSend("/topic/typing/" + bookId, status);
     }
 
-    /**
-     * 입력 종료 이벤트 처리
-     * 클라이언트: /app/typing/stop
-     * 브로드캐스트: /topic/typing/{bookId}
-     */
-    @MessageMapping("/typing/stop")
-    public void handleTypingStop(TypingStatus status) {
-        status.setTyping(false);
-        log.debug("Typing stopped - Book: {}, User: {}", status.getBookId(), status.getUserNickname());
-        messagingTemplate.convertAndSend("/topic/typing/" + status.getBookId(), status);
-    }
-
-    /**
-     * 댓글 입력 시작 이벤트 처리
-     * 클라이언트: /app/comment-typing/start
-     * 브로드캐스트: /topic/comment-typing/{bookId}
-     */
-    @MessageMapping("/comment-typing/start")
-    public void handleCommentTypingStart(TypingStatus status) {
-        status.setTyping(true);
-        log.debug("Comment typing started - Book: {}, User: {}", status.getBookId(), status.getUserNickname());
-        messagingTemplate.convertAndSend("/topic/comment-typing/" + status.getBookId(), status);
-    }
-
-    /**
-     * 댓글 입력 종료 이벤트 처리
-     * 클라이언트: /app/comment-typing/stop
-     * 브로드캐스트: /topic/comment-typing/{bookId}
-     */
-    @MessageMapping("/comment-typing/stop")
-    public void handleCommentTypingStop(TypingStatus status) {
-        status.setTyping(false);
-        log.debug("Comment typing stopped - Book: {}, User: {}", status.getBookId(), status.getUserNickname());
-        messagingTemplate.convertAndSend("/topic/comment-typing/" + status.getBookId(), status);
+    @MessageMapping("/comment-typing/{bookId}")
+    public void handleCommentTyping(@org.springframework.messaging.handler.annotation.DestinationVariable Long bookId,
+            TypingStatus status) {
+        status.setBookId(bookId);
+        log.debug("Comment typing status - Book: {}, User: {}, Typing: {}", bookId, status.getUserNickname(),
+                status.isTyping());
+        messagingTemplate.convertAndSend("/topic/comment-typing/" + bookId, status);
     }
 }

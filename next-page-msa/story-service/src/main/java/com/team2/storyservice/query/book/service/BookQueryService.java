@@ -50,6 +50,32 @@ public class BookQueryService {
         // 검색 조건에 맞는 소설 목록 조회
         List<BookDto> books = bookMapper.findBooks(request);
 
+        // MSA: 작가 정보 조회 (Feign Client)
+        if (!books.isEmpty()) {
+            // 작성자 ID 목록 수집 (중복 제거)
+            List<Long> writerIds = books.stream()
+                    .map(BookDto::getWriterId)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            // 일괄 조회로 N+1 문제 방지
+            try {
+                ApiResponse<MemberBatchInfoDto> response = memberServiceClient.getMembersBatch(writerIds);
+                if (response != null && response.getData() != null) {
+                    Map<Long, String> memberMap = response.getData().getMembers().stream()
+                            .collect(Collectors.toMap(
+                                    MemberInfoDto::getUserId,
+                                    MemberInfoDto::getUserNicknm));
+
+                    // 각 소설의 작성자 닉네임 설정
+                    books.forEach(book -> book.setWriterNicknm(memberMap.get(book.getWriterId())));
+                }
+            } catch (Exception e) {
+                log.warn("Failed to fetch member info from member-service: {}", e.getMessage());
+                // Feign 호출 실패 시에도 계속 진행 (닉네임은 null로 남음)
+            }
+        }
+
         // 전체 개수 조회 (페이징 정보용)
         Long totalElements = bookMapper.countBooks(request);
 
@@ -79,6 +105,19 @@ public class BookQueryService {
         if (book == null) {
             throw new BusinessException(ErrorCode.ENTITY_NOT_FOUND);
         }
+
+        // MSA: 작가 정보 조회 (Feign Client)
+        if (book.getWriterId() != null) {
+            try {
+                ApiResponse<MemberInfoDto> response = memberServiceClient.getMemberInfo(book.getWriterId());
+                if (response != null && response.getData() != null) {
+                    book.setWriterNicknm(response.getData().getUserNicknm());
+                }
+            } catch (Exception e) {
+                log.warn("Failed to fetch member info from member-service: {}", e.getMessage());
+            }
+        }
+
         return book;
     }
 

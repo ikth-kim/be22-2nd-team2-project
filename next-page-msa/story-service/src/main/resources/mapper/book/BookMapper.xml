@@ -117,15 +117,6 @@
         ORDER BY s.sequence_no ASC
     </select>
 
-    <!-- 소설의 좋아요/싫어요 수 조회 (Deprecated: Use Feign Client) -->
-    <select id="countLikes" parameterType="long" resultType="int">
-        SELECT 0
-    </select>
-
-    <select id="countDislikes" parameterType="long" resultType="int">
-        SELECT 0
-    </select>
-
     <!-- 기존 메서드 (하위 호환용) -->
     <select id="findAllBooks" resultType="BookDto">
         SELECT

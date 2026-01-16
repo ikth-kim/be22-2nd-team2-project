@@ -18,6 +18,7 @@ import org.springframework.hateoas.RepresentationModel;
 public class BookDto extends RepresentationModel<BookDto> {
     private Long bookId;
     private Long writerId;
+    private String writerNicknm; // 작가 닉네임
     private String categoryId;
     private String title;
     private String status;

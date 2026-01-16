@@ -25,3 +25,8 @@ resilience4j:
         waitDurationInOpenState: 5s
         failureRateThreshold: 50
         eventConsumerBufferSize: 10
+
+# JWT Configuration for Local Direct Access (Optional)
+# Gateway를 거치지 않고 직접 8082 포트로 접근 시 필요합니다.
+jwt:
+  secret: ${JWT_SECRET:} # 환경변수 JWT_SECRET 또는 값을 직접 입력하세요

@@ -158,20 +158,6 @@
             <button @click="authStore.openLogin" class="btn btn-outline">로그인하고 감상평 남기기</button>
           </div>
 
-          <!-- Comment Form -->
-          <div v-else class="comment-form">
-            <textarea 
-              v-model="newComment" 
-              @input="handleCommentInput" 
-              @blur="handleCommentBlur" 
-              class="form-control"
-              placeholder="이 소설에 대한 감상평을 남겨주세요..."
-            ></textarea>
-            <div class="comment-form-footer">
-              <button class="btn btn-primary" @click="submitComment" :disabled="!newComment.trim()">등록</button>
-            </div>
-          </div>
-
           <!-- Comment List -->
           <div class="comment-list">
             <comment-node 
@@ -184,6 +170,20 @@
               @edit="editComment" 
               @delete="deleteComment"
             />
+          </div>
+
+          <!-- Comment Form -->
+          <div v-if="authStore.isAuthenticated" class="comment-form">
+            <textarea 
+              v-model="newComment" 
+              @input="handleCommentInput" 
+              @blur="handleCommentBlur" 
+              class="form-control"
+              placeholder="이 소설에 대한 감상평을 남겨주세요..."
+            ></textarea>
+            <div class="comment-form-footer">
+              <button class="btn btn-primary" @click="submitComment" :disabled="!newComment.trim()">등록</button>
+            </div>
           </div>
         </section>
       </main>
@@ -335,18 +335,20 @@ const connectWebSocket = () => {
 
 // Handlers
 const handleTypingStatus = (data) => {
+  const nick = data.userNickname || data.nickname
   if (data.isTyping) {
-     if (!activeTypers.value.includes(data.nickname)) activeTypers.value.push(data.nickname)
+     if (nick && !activeTypers.value.includes(nick)) activeTypers.value.push(nick)
   } else {
-     activeTypers.value = activeTypers.value.filter(n => n !== data.nickname)
+     activeTypers.value = activeTypers.value.filter(n => n !== nick)
   }
 }
 
 const handleCommentTypingStatus = (data) => {
+  const nick = data.userNickname || data.nickname
   if (data.isTyping) {
-     if (!activeCommentTypers.value.includes(data.nickname)) activeCommentTypers.value.push(data.nickname)
+     if (nick && !activeCommentTypers.value.includes(nick)) activeCommentTypers.value.push(nick)
   } else {
-     activeCommentTypers.value = activeCommentTypers.value.filter(n => n !== data.nickname)
+     activeCommentTypers.value = activeCommentTypers.value.filter(n => n !== nick)
   }
 }
 
@@ -377,7 +379,10 @@ const handleNewSentence = (event) => {
 }
 
 const handleNewComment = (comment) => {
-  comments.value.unshift(comment)
+  if (comment.nickname && !comment.writerNicknm) {
+    comment.writerNicknm = comment.nickname
+  }
+  comments.value.push(comment)
 }
 
 const handleBookStatusUpdate = (update) => {
@@ -415,7 +420,7 @@ const sendTyping = (status) => {
     if (!stompClient || !stompClient.connected) return
     stompClient.publish({
         destination: `/app/typing/${bookId}`,
-        body: JSON.stringify({ nickname: authStore.user?.userNicknm, isTyping: status })
+        body: JSON.stringify({ userNickname: authStore.user?.userNicknm, isTyping: status })
     })
 }
 
@@ -434,7 +439,7 @@ const sendCommentTyping = (status) => {
     if (!stompClient || !stompClient.connected) return
     stompClient.publish({
         destination: `/app/comment-typing/${bookId}`,
-        body: JSON.stringify({ nickname: authStore.user?.userNicknm, isTyping: status })
+        body: JSON.stringify({ userNickname: authStore.user?.userNicknm, isTyping: status })
     })
 }
 
